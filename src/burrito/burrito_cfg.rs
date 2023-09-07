@@ -1,8 +1,8 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashSet};
 
 use serde_derive::{Deserialize, Serialize};
 
-use super::{log_watcher::EventType, serde_utils, utils};
+use super::{log_watcher::EventType, serde_utils, utils, log_reader::IntelChannel};
 
 #[derive(Clone, Deserialize, Serialize)]
 pub struct BurritoCfg {
@@ -11,11 +11,11 @@ pub struct BurritoCfg {
     #[serde(default)]
     pub log_update_interval_ms: u64,
     #[serde(default)]
-    pub neut_range_alert_thtd_jumps: u32,
-    #[serde(default)]
     pub game_log_alert_cd_ms: u64,
     #[serde(default)]
     pub sound_config: AudioAlertConfig,
+    #[serde(default)]
+    pub text_channel_config: TextChannelConfig,
 }
 
 impl BurritoCfg {
@@ -31,9 +31,9 @@ impl Default for BurritoCfg {
         Self {
             log_dir: format!("{}/Documents/Eve/logs/", utils::get_home_dir()).to_owned(),
             log_update_interval_ms: 500,
-            neut_range_alert_thtd_jumps: 5,
             game_log_alert_cd_ms: 5000,
             sound_config: Default::default(),
+            text_channel_config: Default::default(),
         }
     }
 }
@@ -41,7 +41,7 @@ impl Default for BurritoCfg {
 #[derive(Clone, Deserialize, Serialize)]
 pub struct AudioAlertConfig {
     #[serde(default)]
-    audio_alerts: BTreeSet<AudioAlert>,
+    pub audio_alerts: BTreeSet<AudioAlert>,
 }
 
 impl Default for AudioAlertConfig {
@@ -81,7 +81,22 @@ impl Default for AudioAlertConfig {
 }
 
 #[derive(Clone, Debug, Eq, Hash, Deserialize, Ord, PartialEq, PartialOrd, Serialize)]
-struct AudioAlert {
-    trigger: EventType,
-    sound_file: String,
+pub struct AudioAlert {
+    pub trigger: EventType,
+    pub sound_file: String,
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+pub struct TextChannelConfig {
+    #[serde(default)]
+    pub text_channels: HashSet<IntelChannel>,
+}
+
+impl Default for TextChannelConfig {
+    fn default() -> Self {
+        let mut channels = HashSet::new();
+        channels.insert(IntelChannel::Delve);
+        channels.insert(IntelChannel::Querious);
+        TextChannelConfig { text_channels: channels }
+    }
 }

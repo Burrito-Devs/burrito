@@ -4,7 +4,7 @@ use termcolor::{StandardStream, ColorSpec, WriteColor};
 
 // TODO: standardize color printing
 
-pub fn hostiles(dist: u32) {
+pub fn hostiles(dist: u32, sound_file: &str) {
     let mut stdout = StandardStream::stdout(termcolor::ColorChoice::Auto);
     _ = stdout.set_color(ColorSpec::new().set_fg(Some(termcolor::Color::Red)).set_bold(true));
     _ = write!(&mut stdout, "Alert! Hostiles {} jumps away!", dist);

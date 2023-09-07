@@ -1,6 +1,6 @@
 use std::{env, time::Duration};
 
-use burrito::burrito::{burrito_cfg::BurritoCfg, burrito_data::BurritoData, systems::SystemContext, log_watcher::{EventType, LogWatcher}, log_reader::{LogReader, self}};
+use burrito::burrito::{burrito_cfg::BurritoCfg, burrito_data::BurritoData, systems::SystemContext, log_watcher::{EventType, LogWatcher, LogEvent}, log_reader::{LogReader, self}};
 use burrito::burrito::systems;
 use burrito::burrito::alert;
 
@@ -41,17 +41,22 @@ fn run_burrito(ctx: SystemContext, cfg: BurritoCfg, data: BurritoData) {
         sys_map.clone(),
     );
     loop {
-        for event in chat_watcher.get_events() {
+        chat_watcher.get_events().into_iter().for_each(|event| {
             println!("{}", &event.trigger);
             match event.event_type {
-                EventType::NeutInRange(dist) => {
-                    if dist <= 15 {// TODO: configurable
-                        alert::hostiles(dist);
+                EventType::NeutInRange(event_distance) => {
+                    for alert in &cfg.sound_config.audio_alerts {
+                        if let EventType::NeutInRange(alert_distance) = alert.trigger {
+                            if event_distance <= alert_distance {
+                                alert::hostiles(event_distance, &alert.sound_file);
+                                break;
+                            }
+                        }
                     }
                 }
-                _ => {}
+                _ => {}// TODO: The rest of the events
             }
-        }
+        });
         for event in game_watcher.get_events() {
             match event.event_type {
                 EventType::FactionSpawn => {
@@ -71,19 +76,10 @@ fn run_burrito(ctx: SystemContext, cfg: BurritoCfg, data: BurritoData) {
 }
 
 fn create_chat_log_readers(cfg: &BurritoCfg) -> Vec<LogReader> {
-    let mut delve_reader: LogReader = LogReader::new_intel_reader(cfg.clone(), log_reader::IntelChannel::Delve);
-    _ = delve_reader.read_to_end();
-    let mut querious_reader: LogReader = LogReader::new_intel_reader(cfg.clone(), log_reader::IntelChannel::Querious);
-    _ = querious_reader.read_to_end();
-    let mut fountain_reader: LogReader = LogReader::new_intel_reader(cfg.clone(), log_reader::IntelChannel::Fountain);
-    _ = fountain_reader.read_to_end();
-    let mut gj_reader: LogReader = LogReader::new_intel_reader(cfg.clone(), log_reader::IntelChannel::Gj);
-    _ = gj_reader.read_to_end();
     let mut log_readers: Vec<LogReader> = vec![];
-    log_readers.push(delve_reader);
-    log_readers.push(querious_reader);
-    log_readers.push(fountain_reader);
-    log_readers.push(gj_reader);
+    cfg.text_channel_config.text_channels.iter().for_each(|c| {
+        log_readers.push(LogReader::new_intel_reader(cfg.clone(), c.clone()));
+    });
     log_readers
 }
 
