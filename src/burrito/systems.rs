@@ -6,6 +6,7 @@ use serde_derive::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 use super::path_cache::PathCache;
+use super::utils;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Default, Deserialize, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct SystemId(u64);
@@ -155,11 +156,7 @@ pub fn load_saved_system_map() -> SystemMap {
 }
 
 fn setup_data_dir() -> String {
-    let home_dir = std::env::var("HOME").expect("$HOME not set");
-    const DATA_DIR: &str = "/.burrito";
-    let mut full_path = String::new();
-    full_path.push_str(home_dir.as_str());
-    full_path.push_str(DATA_DIR);
+    let full_path = utils::get_burrito_dir();
     if !std::path::Path::new(&full_path).exists() {
         let path = std::path::Path::new(&full_path);
         eprintln!("Data dir not found. Creating directory {}", path.display());

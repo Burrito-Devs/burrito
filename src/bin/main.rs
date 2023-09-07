@@ -21,7 +21,6 @@ fn main() {
     eprintln!("Setting current system to {}", ctx.get_current_system());
 
     run_burrito(ctx, cfg, data);
-
 }
 
 fn run_burrito(ctx: SystemContext, cfg: BurritoCfg, data: BurritoData) {

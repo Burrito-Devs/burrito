@@ -1,13 +1,12 @@
 use std::{fs::File, io::{BufWriter, BufReader}};
 
+use crate::burrito::utils;
 
+// TODO: Refactor bounds for T into a new trait
 pub fn read_or_create_default_data_struct<T: for<'a> serde::Deserialize<'a> + serde::Serialize + Default + Clone>(path: &str, filename: &str) -> T {
     // TODO Prefer returning default to panicking
-    let home_dir = std::env::var("HOME").expect("$HOME not set");
-    const BURRITO_BASE_DIR: &str = "/.burrito/";
-    let mut path_builder = String::new();
-    path_builder.push_str(home_dir.as_str());
-    path_builder.push_str(BURRITO_BASE_DIR);
+    let mut path_builder = utils::get_burrito_dir();
+    path_builder.push_str("/");
     path_builder.push_str(path);
     if !std::path::Path::new(&path_builder).exists() {
         let path = std::path::Path::new(&path_builder);
