@@ -17,7 +17,6 @@ pub struct LogWatcher {
     cfg: BurritoCfg,
     data: BurritoData,
     log_readers: Vec<LogReader>,
-    event_types: Vec<EventType>,
     sys_map: SystemMap,// TODO: should be &SystemMap
 }
 
@@ -36,7 +35,6 @@ impl LogWatcher {
         cfg: BurritoCfg,
         data: BurritoData,
         log_readers: Vec<LogReader>,
-        event_types: Vec<EventType>,
         sys_map: SystemMap,
     ) -> Self {
         Self {
@@ -44,12 +42,11 @@ impl LogWatcher {
             cfg,
             data,
             log_readers,
-            event_types,
             sys_map,
         }
     }
 
-    pub fn get_all_events(&mut self) -> Vec<LogEvent> {// TODO: Fix game log cooldown logic
+    pub fn get_events(&mut self) -> Vec<LogEvent> {// TODO: Fix game log cooldown logic
         let mut events = LogEventQueue::new(self.cfg.game_log_alert_cd_ms);
         self.log_readers.iter_mut().for_each( |reader| {
             let result = reader.read_to_end();
@@ -173,11 +170,6 @@ impl LogWatcher {
             }
         });
         events.get_log_events().into_iter().cloned().collect()
-    }
-
-    pub fn get_events(&mut self) -> Vec<LogEvent> {
-        self.get_all_events().into_iter()
-            .filter(|event| self.event_types.contains(&event.event_type)).collect()
     }
 }
 

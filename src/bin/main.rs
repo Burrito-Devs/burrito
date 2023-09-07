@@ -31,14 +31,6 @@ fn run_burrito(ctx: SystemContext, cfg: BurritoCfg, data: BurritoData) {
         cfg.clone(),
         data.clone(),
         create_chat_log_readers(&cfg),
-        [
-            EventType::NeutInRange(5u32),
-            EventType::SystemStatusRequest(0u32),
-            EventType::ChatConnectionLost,
-            EventType::ChatConnectionRestored,
-            EventType::SystemStatusRequest(0u32),
-            EventType::SystemClear(0u32),
-        ].to_vec(),
         sys_map.clone(),
     );
     let mut game_watcher = LogWatcher::new(
@@ -46,16 +38,10 @@ fn run_burrito(ctx: SystemContext, cfg: BurritoCfg, data: BurritoData) {
         cfg.clone(),
         data.clone(),
         create_game_log_readers(&cfg),
-        [
-            EventType::FactionSpawn,
-            EventType::DreadSpawn,
-            EventType::TitanSpawn,
-            EventType::OfficerSpawn,
-        ].to_vec(),
         sys_map.clone(),
     );
     loop {
-        for event in chat_watcher.get_all_events() {
+        for event in chat_watcher.get_events() {
             println!("{}", &event.trigger);
             match event.event_type {
                 EventType::NeutInRange(dist) => {
