@@ -14,7 +14,7 @@ pub fn hostiles(dist: u32, sound_file: &str) {
     play_file(sound_file.to_owned());
 }
 
-pub fn faction_spawn(character_name: &str, trigger: &str) {
+pub fn faction_spawn(character_name: &str, trigger: &str, sound_file: &str) {
     let mut stdout = StandardStream::stdout(termcolor::ColorChoice::Auto);
     _ = stdout.set_color(ColorSpec::new()
         .set_bg(Some(termcolor::Color::White))
@@ -24,10 +24,10 @@ pub fn faction_spawn(character_name: &str, trigger: &str) {
     _ = write!(&mut stdout, "[{}] {}", character_name, trigger);
     _ = stdout.set_color(ColorSpec::new().set_fg(None).set_bg(None).set_bold(false));
     _ = writeln!(&mut stdout, "");
-    play_file("/home/bernard/Music/Audacity/faction_spawn.mp3".to_owned());
+    play_file(sound_file.to_owned());
 }
 
-pub fn special_npc_spawn(character_name: &str, trigger: &str) {
+pub fn special_npc_spawn(character_name: &str, trigger: &str, sound_file: &str) {
     let mut stdout = StandardStream::stdout(termcolor::ColorChoice::Auto);
     _ = stdout.set_color(ColorSpec::new()
         .set_bg(Some(termcolor::Color::Red))
@@ -36,10 +36,10 @@ pub fn special_npc_spawn(character_name: &str, trigger: &str) {
     _ = write!(&mut stdout, "[{}] {}", character_name, trigger);
     _ = stdout.set_color(ColorSpec::new().set_fg(None).set_bg(None).set_bold(false));
     _ = writeln!(&mut stdout, "");
-    play_file("/home/bernard/Music/Audacity/special_spawn.mp3".to_owned());
+    play_file(sound_file.to_owned());
 }
 
-pub fn officer_spawn(character_name: &str, trigger: &str) {
+pub fn officer_spawn(character_name: &str, trigger: &str, sound_file: &str) {
     let mut stdout = StandardStream::stdout(termcolor::ColorChoice::Auto);
     _ = stdout.set_color(ColorSpec::new()
         .set_bg(Some(termcolor::Color::White))
@@ -48,7 +48,7 @@ pub fn officer_spawn(character_name: &str, trigger: &str) {
     _ = write!(&mut stdout, "[{}] {}", character_name, trigger);
     _ = stdout.set_color(ColorSpec::new().set_fg(None).set_bg(None).set_bold(false));
     _ = writeln!(&mut stdout, "");
-    play_file("/home/bernard/Music/Audacity/faction_spawn.mp3".to_owned());
+    play_file(sound_file.to_owned());
 }
 
 fn play_file(path: String) {// TODO: Remove panics

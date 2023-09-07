@@ -1,6 +1,6 @@
 use std::{env, time::Duration};
 
-use burrito::burrito::{burrito_cfg::BurritoCfg, burrito_data::BurritoData, systems::SystemContext, log_watcher::{EventType, LogWatcher, LogEvent}, log_reader::{LogReader, self}};
+use burrito::burrito::{burrito_cfg::BurritoCfg, burrito_data::BurritoData, systems::SystemContext, log_watcher::{EventType, LogWatcher}, log_reader::LogReader};
 use burrito::burrito::systems;
 use burrito::burrito::alert;
 
@@ -60,13 +60,22 @@ fn run_burrito(ctx: SystemContext, cfg: BurritoCfg, data: BurritoData) {
         for event in game_watcher.get_events() {
             match event.event_type {
                 EventType::FactionSpawn => {
-                    alert::faction_spawn(&event.character_name, &event.trigger);
+                    if let Some(audio_alert) = cfg.sound_config.audio_alerts.iter()
+                        .find(|a| a.trigger == event.event_type) {
+                        alert::faction_spawn(&event.character_name, &event.trigger, &audio_alert.sound_file)
+                    }
                 }
                 EventType::DreadSpawn => {
-                    alert::special_npc_spawn(&event.character_name, &event.trigger);
+                    if let Some(audio_alert) = cfg.sound_config.audio_alerts.iter()
+                        .find(|a| a.trigger == event.event_type) {
+                        alert::special_npc_spawn(&event.character_name, &event.trigger, &audio_alert.sound_file)
+                    }
                 }
                 EventType::OfficerSpawn => {
-                    alert::officer_spawn(&event.character_name, &event.trigger);
+                    if let Some(audio_alert) = cfg.sound_config.audio_alerts.iter()
+                        .find(|a| a.trigger == event.event_type) {
+                        alert::officer_spawn(&event.character_name, &event.trigger, &audio_alert.sound_file)
+                    }
                 }
                 _ => {}
             }

@@ -49,21 +49,21 @@ impl Default for AudioAlertConfig {
         let mut def = Self {
             audio_alerts: BTreeSet::new(),
         };
-        let home_dir = utils::get_home_dir();
-        let mut def_neutral_file = home_dir.clone();
+        let burrito_dir = utils::get_burrito_dir();
+        let mut def_neutral_file = burrito_dir.clone();
         def_neutral_file.push_str("sounds/neut_in_range.mp3");
         def.audio_alerts.insert(AudioAlert {
             trigger: EventType::NeutInRange(5),
             sound_file: def_neutral_file,
         });
-        let mut def_faction_file = home_dir.clone();
-        def_faction_file.push_str("sound/faction_spawn.mp3");
+        let mut def_faction_file = burrito_dir.clone();
+        def_faction_file.push_str("sounds/faction_spawn.mp3");
         def.audio_alerts.insert(AudioAlert {
             trigger: EventType::FactionSpawn,
             sound_file: def_faction_file,
         });
-        let mut def_special_spawn = home_dir.clone();
-        def_special_spawn.push_str("sound/special_spawn.mp3");
+        let mut def_special_spawn = burrito_dir.clone();
+        def_special_spawn.push_str("sounds/special_spawn.mp3");
         def.audio_alerts.insert(AudioAlert {
             trigger: EventType::DreadSpawn,
             sound_file: def_special_spawn.clone(),
