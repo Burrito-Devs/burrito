@@ -11,7 +11,7 @@ pub fn hostiles(dist: u32, sound_file: &str) {
     _ = stdout.set_color(ColorSpec::new().set_fg(None).set_bg(None).set_bold(false));
     _ = writeln!(&mut stdout, "");
     //play_file("/home/bernard/Downloads/metal_pipes.mp3".to_owned());
-    play_file("/home/bernard/Music/Audacity/neut_in_range.mp3".to_owned());
+    play_file(sound_file.to_owned());
 }
 
 pub fn faction_spawn(character_name: &str, trigger: &str) {
