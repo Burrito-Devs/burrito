@@ -11,6 +11,8 @@ pub struct BurritoCfg {
     #[serde(default)]
     pub log_update_interval_ms: u64,
     #[serde(default)]
+    pub num_game_log_readers: usize,
+    #[serde(default)]
     pub game_log_alert_cd_ms: u64,
     #[serde(default)]
     pub sound_config: AudioAlertConfig,
@@ -31,6 +33,7 @@ impl Default for BurritoCfg {
         Self {
             log_dir: format!("{}/Documents/Eve/logs/", utils::get_home_dir()).to_owned(),
             log_update_interval_ms: 500,
+            num_game_log_readers: 10,
             game_log_alert_cd_ms: 5000,
             sound_config: Default::default(),
             text_channel_config: Default::default(),

@@ -53,7 +53,7 @@ fn run_burrito(ctx: SystemContext, cfg: BurritoCfg, data: BurritoData) {
                             }
                         }
                     }
-                }
+                },
                 _ => {}// TODO: The rest of the events
             }
         });
@@ -64,20 +64,20 @@ fn run_burrito(ctx: SystemContext, cfg: BurritoCfg, data: BurritoData) {
                         .find(|a| a.trigger == event.event_type) {
                         alert::faction_spawn(&event.character_name, &event.trigger, &audio_alert.sound_file)
                     }
-                }
+                },
                 EventType::DreadSpawn => {
                     if let Some(audio_alert) = cfg.sound_config.audio_alerts.iter()
                         .find(|a| a.trigger == event.event_type) {
                         alert::special_npc_spawn(&event.character_name, &event.trigger, &audio_alert.sound_file)
                     }
-                }
+                },
                 EventType::OfficerSpawn => {
                     if let Some(audio_alert) = cfg.sound_config.audio_alerts.iter()
                         .find(|a| a.trigger == event.event_type) {
                         alert::officer_spawn(&event.character_name, &event.trigger, &audio_alert.sound_file)
                     }
-                }
-                _ => {}
+                },
+                _ => {}// TODO: The rest of the events
             }
         }
         std::thread::sleep(Duration::from_millis(cfg.log_update_interval_ms))
@@ -93,6 +93,5 @@ fn create_chat_log_readers(cfg: &BurritoCfg) -> Vec<LogReader> {
 }
 
 fn create_game_log_readers(cfg: &BurritoCfg) -> Vec<LogReader> {
-    const NUM_GAME_LOGS: u32 = 10;// TODO: configurable
-    LogReader::new_game_log_readers(cfg.clone(), NUM_GAME_LOGS)
+    LogReader::new_game_log_readers(cfg.clone(), cfg.num_game_log_readers)
 }

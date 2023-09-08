@@ -10,6 +10,7 @@ use super::burrito_cfg::BurritoCfg;
 
 const LISTENER_REGEX: &str = r#"\s{1,}Listener:\s{1,}(?<listener>[A-z ]{1,})"#;
 
+// TODO: LogReader should probably be a trait and chat and game log readers should be different implementations
 #[derive(Clone, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct LogReader {
     character_name: String,
@@ -20,17 +21,23 @@ pub struct LogReader {
 
 impl LogReader {
     pub fn new_intel_reader(config: BurritoCfg, intel_channel: IntelChannel) -> Self {
-        let mut log_reader =
+        if let Some(log_file) = get_latest_chat_log_file(&config.log_dir, &intel_channel) {
+            let mut log_reader =
             Self {
                 character_name: String::new(),
-                log_file: get_latest_chat_log_file(&config.log_dir, &intel_channel),
+                log_file: log_file,
                 cursor: 0usize,
                 is_chatlog_reader: true,
             };
-        extract_listener(&mut log_reader);
-        log_reader
+            extract_listener(&mut log_reader);
+            log_reader
+        }
+        else {
+            eprintln!("No logs found for channel {}", &intel_channel.get_channel());
+            panic!("Could not create reader for all channels");
+        }
     }
-    pub fn new_game_log_readers(config: BurritoCfg, count: u32) -> Vec<Self> {
+    pub fn new_game_log_readers(config: BurritoCfg, count: usize) -> Vec<Self> {
         let mut log_readers = vec![];
         let log_files = get_latest_game_log_files(&config.log_dir, count);
         for log_file in log_files {
@@ -54,7 +61,7 @@ impl LogReader {
         let mut buffer = vec![];
         let read = reader.read_to_end(&mut buffer).unwrap();
         if read > 0 {
-            let (data, _, _) = if self.is_chatlog_reader() { UTF_16LE.decode(&buffer) } else { UTF_8.decode(&buffer) };
+            let (data, _, _) = if self.is_chatlog_reader() {UTF_16LE.decode(&buffer) } else { UTF_8.decode(&buffer) };
             self.cursor += read;
             for line in data.trim().split("\r\n") {
                 lines.push(line.to_string());
@@ -70,7 +77,7 @@ impl LogReader {
     }
 }
 
-fn get_latest_chat_log_file(log_dir: &str, channel: &IntelChannel) -> String {
+fn get_latest_chat_log_file(log_dir: &str, channel: &IntelChannel) -> Option<String> {
     let mut log_dir = log_dir.to_owned();
     log_dir.push_str("/Chatlogs/");
     let mut sorted_files: BTreeSet<String> = BTreeSet::new();
@@ -82,10 +89,15 @@ fn get_latest_chat_log_file(log_dir: &str, channel: &IntelChannel) -> String {
             sorted_files.insert(log_dir.to_owned() + file_name);
         }
     }
-    return sorted_files.last().unwrap().to_owned()
+    if let Some(last_file) = sorted_files.last() {
+        Some(last_file.to_owned())
+    }
+    else {
+        None
+    }
 }
 
-fn get_latest_game_log_files(log_dir: &str, count: u32) -> Vec<String> {
+fn get_latest_game_log_files(log_dir: &str, count: usize) -> Vec<String> {
     let mut log_dir = log_dir.to_owned();
     log_dir.push_str("/Gamelogs/");
     let mut sorted_files: BTreeSet<String> = BTreeSet::new();
@@ -95,7 +107,7 @@ fn get_latest_game_log_files(log_dir: &str, count: u32) -> Vec<String> {
         let file_name = file_name.to_str().unwrap();
         sorted_files.insert(log_dir.to_owned() + file_name);
     }
-    return sorted_files.iter().rev().take(count as usize).cloned().collect()
+    return sorted_files.iter().rev().take(count).cloned().collect()// TODO: HERE!
 }
 
 fn extract_listener(log_reader: &mut LogReader) {
