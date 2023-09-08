@@ -87,3 +87,5 @@ Burrito is currently in a pre-release state. Presently it is considered to have 
 * Fixing basically every `panic`
 * A lot of heavy refactoring and cleaning/optimization of existing code: Burrito was originally written in 2 hours because I wanted to AFK rat and T.A.C.O did not work for me on Linux. There were a lot of short-cuts taken in order to get it working faster and I have slowly been going through and fixing them. This is also the first full project I've started from scratch in Rust, so I am also getting used to using Rust to do things the "Rust" way.
 * `.clone() .clone() .clone() .clone() .clone() .clone() .clone() .clone() .clone() .clone()`
+* Smarter handling of the most current log file(s)
+* Configurable sound output device
