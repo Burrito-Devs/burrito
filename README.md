@@ -83,6 +83,8 @@ Burrito is currently in a pre-release state. Presently it is considered to have 
 * Multi-system support: multi-boxers may wish to receive notifications for characters in range of multiple systems. So if using characters in 3 different systems, alerts will trigger based on the configured ranges from each of those systems.
 * CLI configuration: Manually editing config files is annoying for small changes. A CLI for changing the configuration files would simplify the process of changing the configuration and make it less error-prone
 * GUI: A full GUI is planned for Burrito. The CLI will always be available, but many users may prefer a GUI. Configuration in the GUI will also be supported.
+* Loads of test coverage
+* Test tool to preview the behavior of your Burrito configuration by injecting data into a log file
 * Basically every `TODO` item throughout the source code
 * Fixing basically every `panic`
 * A lot of heavy refactoring and cleaning/optimization of existing code: Burrito was originally written in 2 hours because I wanted to AFK rat and T.A.C.O did not work for me on Linux. There were a lot of short-cuts taken in order to get it working faster and I have slowly been going through and fixing them. This is also the first full project I've started from scratch in Rust, so I am also getting used to using Rust to do things the "Rust" way.
