@@ -25,11 +25,24 @@ When an event is produced, it may be ignored, it may be logged, or it may play a
 
 #### Windows
 
-TODO:
+* Download the Windows zip file corresponding to your architecture. (if you don't know, probably 64 bit)
+* Extract it to a temp directory.
+* Run the `install` script.
+* Open up all eve clients you want Burrito to watch. Make sure they are in the intel channels you want to read.
+* Open a Command Prompt window
+* Type `burrito <system_name>` where `<system_name>` should be replaced the exact system name you want to monitor.
+
+Burrito should now be running and monitoring logs from your Eve clients. Burrito only reads the most recently created chat log for each channel it is configured to watch. So the last character you select in the Eve client should be in whatever channels you want to watch. If you close this client, you will need to stop Burrito and restart whatever client's chatlogs you want to watch before starting Burrito again. To exit burrito, press Ctrl+C in the Command Prompt window.
 
 #### Linux
 
-TODO:
+* Download the linux zip file.
+* Create a `.burrito` directory under your home directory
+* Extract the contents of the `data` folder into the new `.burrito` folder. Do not copy the `data` folder itself, just its contents
+* Extract the Burrito binary wherever you want to run it from. Either your home directory or any place that is already in your PATH is probably easiest
+* Run `burrito <system_name>` where `<system_name>` should be replaced the exact system name you want to monitor.
+
+The same note about closing clients and restarting Burrito in the Windows section above applies here as well.
 
 ### Running Burrito
 
@@ -39,7 +52,7 @@ To generate the default Burrito configuration files, simply run the Burrito prog
 * `sound_config`: This is the alert sound configuration. The `audio_alerts` sub-field contains a set of pairings of alert types and the sound files to play when they occurr. Values can be added, changed, or removed from here in order to customize the user experience.
 * `text_channel_config`: This value tells Burrito which in-game chat channels to monitor for events. An exhaustive list of values can be found in the [example configuration](./example_cfg.cfg).
 
-After configuring Burrito, you can start it like this: `./burrito <system_name>`. Burrito will remember the system name for subsequent launches, so it will not need to be specified in the future unless the `.burrito/ctx.json` file is deleted. If Burrito is configured correctly, it will begin watching the log files that it is configured to read. New chatlog messages  will show up in the output as they are received in-game. Game log messages are only displayed if they trigger an event that Burrito is configured to listen to. Game log messages will also be displayed with the name of the client that it came from. When multiboxing, this makes it easy to find out which client needs attention if a faction spawn occurrs, for example.
+After configuring Burrito, you can start it like this: `burrito <system_name>`. Burrito will remember the system name for subsequent launches, so it will not need to be specified in the future unless the `.burrito/ctx.json` file is deleted. If Burrito is configured correctly, it will begin watching the log files that it is configured to read. New chatlog messages  will show up in the output as they are received in-game. Game log messages are only displayed if they trigger an event that Burrito is configured to listen to. Game log messages will also be displayed with the name of the client that it came from. When multiboxing, this makes it easy to find out which client needs attention if a faction spawn occurrs, for example.
 
 ## Configuring Burrito
 
