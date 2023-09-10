@@ -1,6 +1,6 @@
 use std::{env, time::Duration};
 
-use burrito::burrito::{burrito_cfg::BurritoCfg, burrito_data::BurritoData, systems::SystemContext, log_watcher::{EventType, LogWatcher, self}, log_reader::LogReader};
+use burrito::burrito::{burrito_cfg::BurritoCfg, burrito_data::BurritoData, systems::SystemContext, log_watcher::{EventType, LogWatcher}};
 use burrito::burrito::systems;
 use burrito::burrito::alert;
 
