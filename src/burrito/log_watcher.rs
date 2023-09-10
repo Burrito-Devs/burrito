@@ -1,10 +1,8 @@
-use std::{collections::{hash_map::DefaultHasher, HashSet}, hash::{Hash, Hasher}};
-
 use chrono::{DateTime, Utc, TimeZone};
 use regex::Regex;
 use serde_derive::{Serialize, Deserialize};
 
-use super::{systems::{SystemContext, SystemMap}, burrito_cfg::BurritoCfg, burrito_data::BurritoData, log_reader::LogReader};
+use super::{systems::{SystemContext, SystemMap}, burrito_cfg::BurritoCfg, burrito_data::BurritoData, log_reader::LogReader, bloom_filter::BloomFilter};
 
 const TIMESTAMP_REGEX: &str = r#"\[\s[0-9]{4}\.[0-9]{2}\.[0-9]{2}\s[0-9]{2}:[0-9]{2}:[0-9]{2}\s\]"#;
 const CHAT_LOG_REGEX: &str = r#"(?<ts>\[ [0-9]{4}\.[0-9]{2}\.[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} \]) (?<sender>.{1,}) > (?<content>.{1,})"#;
@@ -19,7 +17,7 @@ pub struct LogWatcher {
     cfg: BurritoCfg,
     data: BurritoData,
     log_readers: Vec<LogReader>,
-    old_log_hashes: HashSet<u64>,
+    old_log_hashes: BloomFilter,
     sys_map: SystemMap,// TODO: should be &SystemMap
 }
 
@@ -44,7 +42,7 @@ impl LogWatcher {
             cfg,
             data,
             log_readers: vec![],
-            old_log_hashes: HashSet::new(),
+            old_log_hashes: BloomFilter::new(),
             sys_map,
         }
     }
@@ -58,18 +56,21 @@ impl LogWatcher {
         let new_log_readers = self.create_new_log_readers();
         self.log_readers.extend(new_log_readers);
         let mut events = LogEventQueue::new(self.cfg.game_log_alert_cd_ms);
-        let mut chatlog_blacklist: HashSet<String> = HashSet::new();
+        let mut chat_lines_to_skip = BloomFilter::new();
         for reader in &mut self.log_readers {
             let result = reader.read_to_end();
-            if result.bytes_read > 0 && reader.is_chatlog_reader() {
-                // We want to ignore multiple intel logs that are writing the same data
-                let log_file_name = reader.get_log_file();
-                if chatlog_blacklist.contains(&log_file_name) {
-                    continue;
-                }
-                chatlog_blacklist.insert(log_file_name);
-            }
             for line in result.lines {
+                if reader.is_chatlog_reader() {
+                    eprintln!("line: {}", &line);
+                    if chat_lines_to_skip.probably_contains(&line) {
+                        eprintln!("Already in filter, skipping");
+                        continue;
+                    }
+                    else {
+                        eprintln!("Not in filter, adding");
+                        chat_lines_to_skip.insert(&line);
+                    }
+                }
                 let mut event_time = chrono::offset::Utc::now();
                 let ts_regex = Regex::new(TIMESTAMP_REGEX).unwrap();
                 if let Some(ts) = ts_regex.captures(&line) {
@@ -201,14 +202,11 @@ impl LogWatcher {
         let files = std::fs::read_dir(&game_log_dir)
             .expect("Game log directory not found!");
         files.into_iter().for_each(|file| {
-            let mut hasher = DefaultHasher::new();
             let file = file.unwrap();
             let filename = file.file_name();
             let filename = filename.to_string_lossy();
-            filename.hash(&mut hasher);
-            let file_hash = hasher.finish();
-            if !self.old_log_hashes.contains(&file_hash) {
-                self.old_log_hashes.insert(file_hash);
+            if !self.old_log_hashes.probably_contains(&filename) {
+                self.old_log_hashes.insert(&filename);
                 let mut file_path = game_log_dir.clone();
                 file_path.push_str(&filename);
                 let game_log_reader =
@@ -224,11 +222,8 @@ impl LogWatcher {
             let filename = filename.to_str().unwrap();
             for channel in self.cfg.text_channel_config.text_channels.iter() {
                 if filename.starts_with(channel.get_channel().as_str()) {
-                    let mut hasher = DefaultHasher::new();
-                    filename.hash(&mut hasher);
-                    let file_hash = hasher.finish();
-                    if !self.old_log_hashes.contains(&file_hash) {
-                        self.old_log_hashes.insert(file_hash);
+                    if !self.old_log_hashes.probably_contains(&filename) {
+                        self.old_log_hashes.insert(&filename);
                         let mut file_path = chat_log_dir.clone();
                         file_path.push_str(&filename);
                         let chat_log_reader =
