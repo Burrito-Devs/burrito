@@ -56,18 +56,16 @@ impl LogWatcher {
         let new_log_readers = self.create_new_log_readers();
         self.log_readers.extend(new_log_readers);
         let mut events = LogEventQueue::new(self.cfg.game_log_alert_cd_ms);
+        // TODO: This might be OK, but maybe this filter should persist for 2 or 3 cycles instead of 1?
         let mut chat_lines_to_skip = BloomFilter::new();
         for reader in &mut self.log_readers {
             let result = reader.read_to_end();
             for line in result.lines {
                 if reader.is_chatlog_reader() {
-                    eprintln!("line: {}", &line);
                     if chat_lines_to_skip.probably_contains(&line) {
-                        eprintln!("Already in filter, skipping");
                         continue;
                     }
                     else {
-                        eprintln!("Not in filter, adding");
                         chat_lines_to_skip.insert(&line);
                     }
                 }
