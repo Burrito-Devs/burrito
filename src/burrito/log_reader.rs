@@ -66,6 +66,11 @@ impl LogReader {
     pub fn get_character_name(&self) -> String {
         self.character_name.to_owned()
     }
+
+    pub fn get_log_file(&self) -> String {
+        self.log_file.to_owned()
+    }
+
 }
 
 fn extract_listener(log_reader: &mut LogReader) {

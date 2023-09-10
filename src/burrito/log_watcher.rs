@@ -58,8 +58,17 @@ impl LogWatcher {
         let new_log_readers = self.create_new_log_readers();
         self.log_readers.extend(new_log_readers);
         let mut events = LogEventQueue::new(self.cfg.game_log_alert_cd_ms);
-        self.log_readers.iter_mut().for_each( |reader| {
+        let mut chatlog_blacklist: HashSet<String> = HashSet::new();
+        for reader in &mut self.log_readers {
             let result = reader.read_to_end();
+            if result.bytes_read > 0 && reader.is_chatlog_reader() {
+                // We want to ignore multiple intel logs that are writing the same data
+                let log_file_name = reader.get_log_file();
+                if chatlog_blacklist.contains(&log_file_name) {
+                    continue;
+                }
+                chatlog_blacklist.insert(log_file_name);
+            }
             for line in result.lines {
                 let mut event_time = chrono::offset::Utc::now();
                 let ts_regex = Regex::new(TIMESTAMP_REGEX).unwrap();
@@ -178,7 +187,7 @@ impl LogWatcher {
                     }
                 }
             }
-        });
+        }
         events.get_log_events().into_iter().cloned().collect()
     }
 
