@@ -17,6 +17,7 @@ impl PathCache {
     pub fn search(&mut self, key: &(SystemId, SystemId)) -> Option<Distance> {
         let opposite_key = (key.1, key.0);
         let mut new_key = key.to_owned();
+        // TODO: this is a little ugly and is a warning. Rewrite this a bit better and more readable
         let mut new_entry:PathCacheEntry = Default::default();
         if let Some(entry) = self.path_cache.get(&opposite_key) {
             // Old entry with opposite key exists. Update it
@@ -100,5 +101,55 @@ impl Ord for PathCacheEntry {
 impl PartialOrd for PathCacheEntry {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.last_updated_ms.partial_cmp(&other.last_updated_ms)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PathCache;
+    use super::PathCacheEntry;
+    use super::Distance;
+
+    #[test]
+    fn test_ord_for_path_cache_entry() {
+        let mut uut_old = PathCacheEntry {
+            distance: Distance::Route { route: 3 },
+            last_updated_ms: 0
+        };
+        let mut uut_new = PathCacheEntry {
+            distance: Distance::Route { route: 3 },
+            last_updated_ms: 1
+        };
+        assert!(uut_new > uut_old);
+
+        uut_new.distance = Distance::Route { route: 1 };
+        assert!(uut_new > uut_old);
+
+        uut_new.distance = Distance::Route { route: 5 };
+        assert!(uut_new > uut_old);
+
+        uut_new.distance = Distance::RouteFetchErr;
+        assert!(uut_new > uut_old);
+
+        uut_new.distance = Distance::NoRoute;
+        assert!(uut_new > uut_old);
+
+        uut_old.distance = Distance::Route { route: 1 };
+        assert!(uut_new > uut_old);
+
+        uut_old.distance = Distance::Route { route: 5 };
+        assert!(uut_new > uut_old);
+
+        uut_old.distance = Distance::RouteFetchErr;
+        assert!(uut_new > uut_old);
+
+        uut_old.distance = Distance::NoRoute;
+        assert!(uut_new > uut_old);
+    }
+
+    #[test]
+    fn test_persistent_path_cache() {
+        let /*mut*/ _uut = PathCache::default();
+        // TODO: this
     }
 }

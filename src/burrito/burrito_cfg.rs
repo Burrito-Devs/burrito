@@ -2,7 +2,7 @@ use std::collections::{BTreeSet, HashSet};
 
 use serde_derive::{Deserialize, Serialize};
 
-use super::{log_watcher::EventType, serde_utils, utils, log_reader::IntelChannel};
+use super::{log_watcher::EventType, serde_utils, utils, log_watcher::IntelChannel};
 
 #[derive(Clone, Deserialize, Serialize)]
 pub struct BurritoCfg {

@@ -1,3 +1,5 @@
+use std::{collections::{hash_map::DefaultHasher, HashSet}, hash::{Hash, Hasher}};
+
 use chrono::{DateTime, Utc, TimeZone};
 use regex::Regex;
 use serde_derive::{Serialize, Deserialize};
@@ -17,6 +19,7 @@ pub struct LogWatcher {
     cfg: BurritoCfg,
     data: BurritoData,
     log_readers: Vec<LogReader>,
+    old_log_hashes: HashSet<u64>,
     sys_map: SystemMap,// TODO: should be &SystemMap
 }
 
@@ -34,19 +37,26 @@ impl LogWatcher {
         ctx: SystemContext,
         cfg: BurritoCfg,
         data: BurritoData,
-        log_readers: Vec<LogReader>,
         sys_map: SystemMap,
     ) -> Self {
         Self {
             ctx,
             cfg,
             data,
-            log_readers,
+            log_readers: vec![],
+            old_log_hashes: HashSet::new(),
             sys_map,
         }
     }
 
+    pub fn init(&mut self) {
+        // Ignore all files that exist before Burrito starts
+        self.create_new_log_readers();
+    }
+
     pub fn get_events(&mut self) -> Vec<LogEvent> {// TODO: Fix game log cooldown logic
+        let new_log_readers = self.create_new_log_readers();
+        self.log_readers.extend(new_log_readers);
         let mut events = LogEventQueue::new(self.cfg.game_log_alert_cd_ms);
         self.log_readers.iter_mut().for_each( |reader| {
             let result = reader.read_to_end();
@@ -171,6 +181,57 @@ impl LogWatcher {
         });
         events.get_log_events().into_iter().cloned().collect()
     }
+
+
+    fn create_new_log_readers(&mut self) -> Vec<LogReader> {
+        let mut readers = vec![];
+        let mut game_log_dir = self.cfg.log_dir.to_owned();
+        let mut chat_log_dir = game_log_dir.clone();
+        game_log_dir.push_str("/Gamelogs/");
+        chat_log_dir.push_str("/Chatlogs/");
+        let files = std::fs::read_dir(&game_log_dir)
+            .expect("Game log directory not found!");
+        files.into_iter().for_each(|file| {
+            let mut hasher = DefaultHasher::new();
+            let file = file.unwrap();
+            let filename = file.file_name();
+            let filename = filename.to_string_lossy();
+            filename.hash(&mut hasher);
+            let file_hash = hasher.finish();
+            if !self.old_log_hashes.contains(&file_hash) {
+                self.old_log_hashes.insert(file_hash);
+                let mut file_path = game_log_dir.clone();
+                file_path.push_str(&filename);
+                let game_log_reader =
+                    LogReader::new_gamelog_reader(&file_path);
+                readers.push(game_log_reader);
+            }
+        });
+        let files = std::fs::read_dir(&chat_log_dir)
+            .expect("Chat log directory not found!");
+        files.into_iter().for_each(|file| {
+            let file = file.unwrap();
+            let filename = file.file_name();
+            let filename = filename.to_str().unwrap();
+            for channel in self.cfg.text_channel_config.text_channels.iter() {
+                if filename.starts_with(channel.get_channel().as_str()) {
+                    let mut hasher = DefaultHasher::new();
+                    filename.hash(&mut hasher);
+                    let file_hash = hasher.finish();
+                    if !self.old_log_hashes.contains(&file_hash) {
+                        self.old_log_hashes.insert(file_hash);
+                        let mut file_path = chat_log_dir.clone();
+                        file_path.push_str(&filename);
+                        let chat_log_reader =
+                            LogReader::new_chatlog_reader(&file_path);
+                        readers.push(chat_log_reader);
+                    }
+                }
+            }
+        });
+        readers
+    }
+
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
@@ -232,5 +293,68 @@ impl LogEventQueue {
     }
     pub fn get_log_events(&self) -> &Vec<LogEvent> {
         &self.log_events
+    }
+}
+
+#[derive(Clone, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+pub enum IntelChannel {
+    Aridia,
+    Branch,
+    Catch,
+    CloudRing,
+    CobaltEdge,
+    Curse,
+    Deklein,
+    Delve,
+    Fade,
+    Fountain,
+    Geminate,
+    Khanid,
+    Lonetrek,
+    ParagonSoul,
+    PeriodBasis,
+    Pochven,
+    Providence,
+    PureBlind,
+    Querious,
+    Syndicate,
+    Tenal,
+    Tribute,
+    ValeOfTheSilent,
+    Venal,
+    Gj,
+    Custom{channel: String}
+}
+
+impl IntelChannel {
+    fn get_channel(&self) -> String {
+        match self {
+            IntelChannel::Aridia => "aridia.imperium".to_owned(),
+            IntelChannel::Branch => "brn.imperium".to_owned(),
+            IntelChannel::Catch => "catch.imperium".to_owned(),
+            IntelChannel::CloudRing => "cr.imperium".to_owned(),
+            IntelChannel::CobaltEdge => "ce.imperium".to_owned(),
+            IntelChannel::Curse => "curse.imperium".to_owned(),
+            IntelChannel::Deklein => "dek.imperium".to_owned(),
+            IntelChannel::Delve => "delve.imperium".to_owned(),
+            IntelChannel::Fade => "fade.imperium".to_owned(),
+            IntelChannel::Fountain => "ftn.imperium".to_owned(),
+            IntelChannel::Geminate => "gem.imperium".to_owned(),
+            IntelChannel::Khanid => "khanid.imperium".to_owned(),
+            IntelChannel::Lonetrek => "lone.imperium".to_owned(),
+            IntelChannel::ParagonSoul => "paragon.imperium".to_owned(),
+            IntelChannel::PeriodBasis => "period.imperium".to_owned(),
+            IntelChannel::Pochven => "triangle.imperium".to_owned(),
+            IntelChannel::Providence => "provi.imperium".to_owned(),
+            IntelChannel::PureBlind => "pb.imperium".to_owned(),
+            IntelChannel::Querious => "querious.imperium".to_owned(),
+            IntelChannel::Syndicate => "synd.imperium".to_owned(),
+            IntelChannel::Tenal => "tnl.imperium".to_owned(),
+            IntelChannel::Tribute => "tri.imperium".to_owned(),
+            IntelChannel::ValeOfTheSilent => "vale.imperium".to_owned(),
+            IntelChannel::Venal => "vnl.imperium".to_owned(),
+            IntelChannel::Gj => "gj.imperium".to_owned(),
+            Self::Custom { channel } => channel.to_owned(),
+        }
     }
 }
