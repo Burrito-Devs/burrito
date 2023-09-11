@@ -13,7 +13,7 @@ pub struct BurritoCfg {
     #[serde(default)]
     pub game_log_alert_cd_ms: u64,
     #[serde(default)]
-    pub recent_post_cache_ttl_ms: u64,
+    pub recent_post_cache_ttl_ms: i64,
     #[serde(default)]
     pub sound_config: AudioAlertConfig,
     #[serde(default)]

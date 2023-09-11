@@ -1,15 +1,15 @@
 use std::collections::HashMap;
 
-use chrono::{DateTime, Utc, TimeZone};
+use chrono::{DateTime, Utc};
 use regex::Regex;
 use serde_derive::{Serialize, Deserialize};
 
 use super::{systems::{SystemContext, SystemMap}, burrito_cfg::BurritoCfg, burrito_data::BurritoData, log_reader::LogReader, bloom_filter::BloomFilter};
 
-const TIMESTAMP_REGEX: &str = r#"\[\s[0-9]{4}\.[0-9]{2}\.[0-9]{2}\s[0-9]{2}:[0-9]{2}:[0-9]{2}\s\]"#;
+//const TIMESTAMP_REGEX: &str = r#"\[\s[0-9]{4}\.[0-9]{2}\.[0-9]{2}\s[0-9]{2}:[0-9]{2}:[0-9]{2}\s\]"#;
 const CHAT_LOG_REGEX: &str = r#"(?<ts>\[ [0-9]{4}\.[0-9]{2}\.[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} \]) (?<sender>.{1,}) > (?<content>.{1,})"#;
 const GAME_LOG_REGEX: &str = r#"(?<ts>\[ [0-9]{4}\.[0-9]{2}\.[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} \]) \((?<type>[a-z]{1,})\) (?<content>.{1,})"#;
-const TS_FMT: &str = "[ %Y.%m.%d %H:%M:%S ]";
+//const TS_FMT: &str = "[ %Y.%m.%d %H:%M:%S ]";
 const SYSTEM_MESSAGE_SENDER: &str = "EVE System";
 const CHAT_CONNECTION_LOST_MESSAGE: &str = "Connection to chat server lost";
 const CHAT_CONNECTION_RESTORED_MESSAGE: &str = "Reconnected to chat server";
@@ -20,7 +20,7 @@ pub struct LogWatcher {
     data: BurritoData,
     log_readers: Vec<LogReader>,
     old_log_hashes: BloomFilter,
-    recent_post_cache: HashMap<(String, String), u64>,
+    recent_post_cache: HashMap<(String, String), i64>,
     sys_map: SystemMap,// TODO: should be &SystemMap
 }
 
@@ -60,17 +60,18 @@ impl LogWatcher {
         let new_log_readers = self.update_log_readers();
         self.log_readers.extend(new_log_readers);
         let mut events = LogEventQueue::new(self.cfg.game_log_alert_cd_ms);
-        let mut event_time = chrono::offset::Utc::now();
-        self.update_recent_post_cache(event_time.timestamp_millis() as u64);
+        let event_time = chrono::offset::Utc::now();
+        self.update_recent_post_cache(event_time.timestamp_millis());
         for reader in &mut self.log_readers {
             let result = reader.read_to_end();
             for line in result.lines {
-                let ts_regex = Regex::new(TIMESTAMP_REGEX).unwrap();
+                // TODO: eve time is out of sync with Rust time by like half a minute
+                /*let ts_regex = Regex::new(TIMESTAMP_REGEX).unwrap();
                 if let Some(ts) = ts_regex.captures(&line) {
                     let ts = ts.get(0).unwrap().as_str();
-                    let ts_result = Utc.datetime_from_str(ts, TS_FMT);
+                    let _ts_result = Utc.datetime_from_str(ts, TS_FMT);
                     event_time = ts_result.unwrap().into();
-                }
+                }*/
                 if reader.is_chatlog_reader() {
                     let regex = Regex::new(CHAT_LOG_REGEX).unwrap();
                     if let Some(cap) = regex.captures(&line) {
@@ -81,7 +82,7 @@ impl LogWatcher {
                             continue;
                         }
                         else {
-                            self.recent_post_cache.insert(cache_key, event_time.timestamp_millis() as u64);
+                            self.recent_post_cache.insert(cache_key, event_time.timestamp_millis());
                         }
                         let d = self.ctx.process_message(content.to_owned(), &self.sys_map);
                         match sender {
@@ -192,11 +193,12 @@ impl LogWatcher {
         events.get_log_events().into_iter().cloned().collect()
     }
 
-    fn update_recent_post_cache(&mut self, current_time_ms: u64) {
+    fn update_recent_post_cache(&mut self, current_time_ms: i64) {
         let map = self.recent_post_cache.clone();
         let keys = map.keys();
         for key in keys {
-            if current_time_ms - *self.recent_post_cache.get(&key).unwrap() >= self.cfg.recent_post_cache_ttl_ms {
+            let then = *self.recent_post_cache.get(&key).unwrap();
+            if (current_time_ms - then) >= self.cfg.recent_post_cache_ttl_ms {
                 self.recent_post_cache.remove(&key);
             }
         }
