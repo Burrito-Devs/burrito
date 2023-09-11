@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc, TimeZone};
 use regex::Regex;
 use serde_derive::{Serialize, Deserialize};
@@ -18,6 +20,7 @@ pub struct LogWatcher {
     data: BurritoData,
     log_readers: Vec<LogReader>,
     old_log_hashes: BloomFilter,
+    recent_post_cache: HashMap<(String, String), u64>,
     sys_map: SystemMap,// TODO: should be &SystemMap
 }
 
@@ -43,33 +46,25 @@ impl LogWatcher {
             data,
             log_readers: vec![],
             old_log_hashes: BloomFilter::new(),
+            recent_post_cache: HashMap::new(),
             sys_map,
         }
     }
 
     pub fn init(&mut self) {
         // Ignore all files that exist before Burrito starts
-        self.create_new_log_readers();
+        self.ignore_logs();
     }
 
     pub fn get_events(&mut self) -> Vec<LogEvent> {// TODO: Fix game log cooldown logic
-        let new_log_readers = self.create_new_log_readers();
+        let new_log_readers = self.update_log_readers();
         self.log_readers.extend(new_log_readers);
         let mut events = LogEventQueue::new(self.cfg.game_log_alert_cd_ms);
-        // TODO: This might be OK, but maybe this filter should persist for 2 or 3 cycles instead of 1?
-        let mut chat_lines_to_skip = BloomFilter::new();
+        let mut event_time = chrono::offset::Utc::now();
+        self.update_recent_post_cache(event_time.timestamp_millis() as u64);
         for reader in &mut self.log_readers {
             let result = reader.read_to_end();
             for line in result.lines {
-                if reader.is_chatlog_reader() {
-                    if chat_lines_to_skip.probably_contains(&line) {
-                        continue;
-                    }
-                    else {
-                        chat_lines_to_skip.insert(&line);
-                    }
-                }
-                let mut event_time = chrono::offset::Utc::now();
                 let ts_regex = Regex::new(TIMESTAMP_REGEX).unwrap();
                 if let Some(ts) = ts_regex.captures(&line) {
                     let ts = ts.get(0).unwrap().as_str();
@@ -81,6 +76,13 @@ impl LogWatcher {
                     if let Some(cap) = regex.captures(&line) {
                         let sender = &cap["sender"];
                         let content = &cap["content"];
+                        let cache_key = (sender.to_owned(), content.to_owned());
+                        if self.recent_post_cache.contains_key(&cache_key) {
+                            continue;
+                        }
+                        else {
+                            self.recent_post_cache.insert(cache_key, event_time.timestamp_millis() as u64);
+                        }
                         let d = self.ctx.process_message(content.to_owned(), &self.sys_map);
                         match sender {
                             SYSTEM_MESSAGE_SENDER => {
@@ -190,8 +192,17 @@ impl LogWatcher {
         events.get_log_events().into_iter().cloned().collect()
     }
 
+    fn update_recent_post_cache(&mut self, current_time_ms: u64) {
+        let map = self.recent_post_cache.clone();
+        let keys = map.keys();
+        for key in keys {
+            if current_time_ms - *self.recent_post_cache.get(&key).unwrap() >= self.cfg.recent_post_cache_ttl_ms {
+                self.recent_post_cache.remove(&key);
+            }
+        }
+    }
 
-    fn create_new_log_readers(&mut self) -> Vec<LogReader> {
+    fn update_log_readers(&mut self) -> Vec<LogReader> {
         let mut readers = vec![];
         let mut game_log_dir = self.cfg.log_dir.to_owned();
         let mut chat_log_dir = game_log_dir.clone();
@@ -207,8 +218,9 @@ impl LogWatcher {
                 self.old_log_hashes.insert(&filename);
                 let mut file_path = game_log_dir.clone();
                 file_path.push_str(&filename);
-                let game_log_reader =
+                let mut game_log_reader =
                     LogReader::new_gamelog_reader(&file_path);
+                _ = game_log_reader.read_to_end();
                 readers.push(game_log_reader);
             }
         });
@@ -224,14 +236,38 @@ impl LogWatcher {
                         self.old_log_hashes.insert(&filename);
                         let mut file_path = chat_log_dir.clone();
                         file_path.push_str(&filename);
-                        let chat_log_reader =
+                        let mut chat_log_reader =
                             LogReader::new_chatlog_reader(&file_path);
+                        _ = chat_log_reader.read_to_end();
                         readers.push(chat_log_reader);
                     }
                 }
             }
         });
         readers
+    }
+
+    fn ignore_logs(&mut self) {
+        let mut game_log_dir = self.cfg.log_dir.to_owned();
+        let mut chat_log_dir = game_log_dir.clone();
+        game_log_dir.push_str("/Gamelogs/");
+        chat_log_dir.push_str("/Chatlogs/");
+        let files = std::fs::read_dir(&game_log_dir)
+            .expect("Game log directory not found!");
+        files.into_iter().for_each(|file| {
+            let file = file.unwrap();
+            let filename = file.file_name();
+            let filename = filename.to_string_lossy();
+            self.old_log_hashes.insert(&filename);
+        });
+        let files = std::fs::read_dir(&chat_log_dir)
+            .expect("Chat log directory not found!");
+        files.into_iter().for_each(|file| {
+            let file = file.unwrap();
+            let filename = file.file_name();
+            let filename = filename.to_str().unwrap();
+            self.old_log_hashes.insert(&filename);
+        });
     }
 
 }

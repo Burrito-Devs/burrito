@@ -29,6 +29,10 @@ impl BloomFilter {
         self.hashes.contains(&hash)
     }
 
+    pub fn clear(&mut self) {
+        self.hashes.clear();
+    }
+
     pub fn new() -> Self {
         BloomFilter::default()
     }
