@@ -34,7 +34,7 @@ impl Default for BurritoCfg {
             log_dir: format!("{}/Documents/Eve/logs/", utils::get_home_dir()).to_owned(),
             log_update_interval_ms: 500,
             game_log_alert_cd_ms: 5000,
-            recent_post_cache_ttl_ms: 10000,
+            recent_post_cache_ttl_ms: 30000,
             sound_config: Default::default(),
             text_channel_config: Default::default(),
         }
