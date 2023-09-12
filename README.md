@@ -28,11 +28,10 @@ When an event is produced, it may be ignored, it may be logged, or it may play a
 * Download the Windows zip file corresponding to your architecture. (if you don't know, probably 64 bit)
 * Extract it to a temp directory.
 * Run the `install` script.
-* Open up all eve clients you want Burrito to watch. Make sure they are in the intel channels you want to read.
 * Open a Command Prompt window
 * Type `burrito <system_name>` where `<system_name>` should be replaced the exact system name you want to monitor.
 
-Burrito should now be running and monitoring logs from your Eve clients. Burrito only reads the most recently created chat log for each channel it is configured to watch. So the last character you select in the Eve client should be in whatever channels you want to watch. If you close this client, you will need to stop Burrito and restart whatever client's chatlogs you want to watch before starting Burrito again. To exit burrito, press Ctrl+C in the Command Prompt window.
+Burrito should now be running and waiting for logs from your Eve clients. Once Burrito is running, you can start the Eve clients you want to monitor. To exit burrito, press Ctrl+C in the Command Prompt window. If you restart Burrito, you will need to restart any Eve clients that you want to monitor.
 
 #### Linux
 
