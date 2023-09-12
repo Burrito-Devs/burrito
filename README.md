@@ -11,7 +11,7 @@ Out of the box, Burrito is configured to notify the user using text and sound wh
 * NPC capital ship spawn
 * NPC officer spawn
 
-Only the most recently created chatlog file for each channel is monitored and parsed for events. Game logs are handled differently. A configurable number of game logs are watched simultaneously. The Eve client only creates one per character per session. By default, Burrito will monitor the 10 most recent game logs.
+All new chatlog files for configured channels will be monitored after starting Burrito. New game log files will also be monitored. If clients are closed or crash, there is no need to restart Burrito. It will find the new log files when you start new clients.
 
 ### Event triggers
 
