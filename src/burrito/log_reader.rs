@@ -16,8 +16,6 @@ pub struct LogReader {
     log_file: String,
     cursor: usize,
     is_chatlog_reader: bool,
-    last_updated_timestamp_ms: u64,
-    active: bool,
 }
 
 impl LogReader {
@@ -30,8 +28,6 @@ impl LogReader {
                 log_file: file.to_owned(),
                 cursor: 0usize,
                 is_chatlog_reader: true,
-                last_updated_timestamp_ms: 0,
-                active: true,
             };
         extract_channel_info(&mut log_reader);
         log_reader
@@ -45,8 +41,6 @@ impl LogReader {
                 log_file: file.to_owned(),
                 cursor: 0usize,
                 is_chatlog_reader: false,
-                last_updated_timestamp_ms: 0,
-                active: true,
             };
         extract_channel_info(&mut log_reader);
         log_reader
@@ -54,7 +48,7 @@ impl LogReader {
 
     pub fn read_to_end(&mut self) -> LogReadResult {
         let mut lines: Vec<String> = vec![];
-        let f = File::open(&self.log_file).unwrap();
+        let f = File::open(&self.log_file).expect(&format!("Failed to open {}", self.log_file));
         let mut reader = BufReader::new(f);
         _ = reader.seek(SeekFrom::Start(self.cursor as u64));
         let mut buffer = vec![];
@@ -70,7 +64,6 @@ impl LogReader {
             for line in data.trim().split("\r\n") {
                 lines.push(line.to_string());
             }
-            self.last_updated_timestamp_ms = chrono::offset::Utc::now().timestamp_millis() as u64;
         }
         return LogReadResult { bytes_read: read, lines: lines };
     }

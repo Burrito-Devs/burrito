@@ -216,14 +216,16 @@ impl LogWatcher {
             let file = file.unwrap();
             let filename = file.file_name();
             let filename = filename.to_string_lossy();
-            if !self.old_log_hashes.probably_contains(&filename) {
-                self.old_log_hashes.insert(&filename);
-                let mut file_path = game_log_dir.clone();
-                file_path.push_str(&filename);
-                let mut game_log_reader =
-                    LogReader::new_gamelog_reader(&file_path);
-                _ = game_log_reader.read_to_end();
-                readers.push(game_log_reader);
+            if filename.ends_with(".txt") {
+                if !self.old_log_hashes.probably_contains(&filename) {
+                    self.old_log_hashes.insert(&filename);
+                    let mut file_path = game_log_dir.clone();
+                    file_path.push_str(&filename);
+                    let mut game_log_reader =
+                        LogReader::new_gamelog_reader(&file_path);
+                    _ = game_log_reader.read_to_end();
+                    readers.push(game_log_reader);
+                }
             }
         });
         let files = std::fs::read_dir(&chat_log_dir)
@@ -233,7 +235,7 @@ impl LogWatcher {
             let filename = file.file_name();
             let filename = filename.to_str().unwrap();
             for channel in self.cfg.text_channel_config.text_channels.iter() {
-                if filename.starts_with(channel.get_channel().as_str()) {
+                if filename.starts_with(channel.get_channel().as_str()) && filename.ends_with(".txt") {
                     if !self.old_log_hashes.probably_contains(&filename) {
                         self.old_log_hashes.insert(&filename);
                         let mut file_path = chat_log_dir.clone();
@@ -249,6 +251,7 @@ impl LogWatcher {
         readers
     }
 
+    // TODO: open most recently modified of each subscribed channel on startup
     fn ignore_logs(&mut self) {
         let mut game_log_dir = self.cfg.log_dir.to_owned();
         let mut chat_log_dir = game_log_dir.clone();

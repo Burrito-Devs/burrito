@@ -33,6 +33,7 @@ fn run_burrito(ctx: SystemContext, cfg: BurritoCfg, data: BurritoData) {
         sys_map.clone(),
     );
     log_watcher.init();
+    eprintln!("Burrito ready!");
     loop {
         log_watcher.get_events().into_iter().for_each(|event| {
             println!("{}", &event.trigger);
@@ -41,7 +42,7 @@ fn run_burrito(ctx: SystemContext, cfg: BurritoCfg, data: BurritoData) {
                     for alert in &cfg.sound_config.audio_alerts {
                         if let EventType::NeutInRange(alert_distance) = alert.trigger {
                             if event_distance <= alert_distance {
-                                alert::hostiles(event_distance, &alert.sound_file);
+                                alert::alert(event.event_type, &event.trigger, &event.character_name, Some(&alert.sound_file));
                                 break;
                             }
                         }
@@ -50,19 +51,20 @@ fn run_burrito(ctx: SystemContext, cfg: BurritoCfg, data: BurritoData) {
                 EventType::FactionSpawn => {
                     if let Some(audio_alert) = cfg.sound_config.audio_alerts.iter()
                         .find(|a| a.trigger == event.event_type) {
-                        alert::faction_spawn(&event.character_name, &event.trigger, &audio_alert.sound_file)
+                            alert::alert(event.event_type, &event.trigger, &event.character_name, Some(&audio_alert.sound_file))
                     }
                 },
                 EventType::DreadSpawn => {
                     if let Some(audio_alert) = cfg.sound_config.audio_alerts.iter()
                         .find(|a| a.trigger == event.event_type) {
-                        alert::special_npc_spawn(&event.character_name, &event.trigger, &audio_alert.sound_file)
+                            alert::alert(event.event_type, &event.trigger, &event.character_name, Some(&audio_alert.sound_file))
                     }
                 },
                 EventType::OfficerSpawn => {
                     if let Some(audio_alert) = cfg.sound_config.audio_alerts.iter()
                         .find(|a| a.trigger == event.event_type) {
-                        alert::officer_spawn(&event.character_name, &event.trigger, &audio_alert.sound_file)
+                        alert::alert(event.event_type, &event.trigger, &event.character_name, Some(&audio_alert.sound_file))
+                        //alert::officer_spawn(&event.character_name, &event.trigger, &audio_alert.sound_file);
                     }
                 },
                 _ => {}// TODO: The rest of the events
