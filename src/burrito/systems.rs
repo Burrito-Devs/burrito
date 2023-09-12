@@ -17,6 +17,18 @@ impl std::fmt::Display for SystemId {
     }
 }
 
+impl From<SystemId> for u64 {
+    fn from(sys_id: SystemId) -> Self {
+        sys_id.0
+    }
+}
+
+impl From<u64> for SystemId {
+    fn from(value: u64) -> Self {
+        SystemId(value)
+    }
+}
+
 #[serde_as]
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct SystemContext {

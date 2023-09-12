@@ -1,13 +1,15 @@
-use chrono::{DateTime, Utc, TimeZone};
+use std::collections::HashMap;
+
+use chrono::{DateTime, Utc};
 use regex::Regex;
 use serde_derive::{Serialize, Deserialize};
 
-use super::{systems::{SystemContext, SystemMap}, burrito_cfg::BurritoCfg, burrito_data::BurritoData, log_reader::LogReader};
+use super::{systems::{SystemContext, SystemMap}, burrito_cfg::BurritoCfg, burrito_data::BurritoData, log_reader::LogReader, bloom_filter::BloomFilter};
 
-const TIMESTAMP_REGEX: &str = r#"\[\s[0-9]{4}\.[0-9]{2}\.[0-9]{2}\s[0-9]{2}:[0-9]{2}:[0-9]{2}\s\]"#;
+//const TIMESTAMP_REGEX: &str = r#"\[\s[0-9]{4}\.[0-9]{2}\.[0-9]{2}\s[0-9]{2}:[0-9]{2}:[0-9]{2}\s\]"#;
 const CHAT_LOG_REGEX: &str = r#"(?<ts>\[ [0-9]{4}\.[0-9]{2}\.[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} \]) (?<sender>.{1,}) > (?<content>.{1,})"#;
 const GAME_LOG_REGEX: &str = r#"(?<ts>\[ [0-9]{4}\.[0-9]{2}\.[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} \]) \((?<type>[a-z]{1,})\) (?<content>.{1,})"#;
-const TS_FMT: &str = "[ %Y.%m.%d %H:%M:%S ]";
+//const TS_FMT: &str = "[ %Y.%m.%d %H:%M:%S ]";
 const SYSTEM_MESSAGE_SENDER: &str = "EVE System";
 const CHAT_CONNECTION_LOST_MESSAGE: &str = "Connection to chat server lost";
 const CHAT_CONNECTION_RESTORED_MESSAGE: &str = "Reconnected to chat server";
@@ -17,6 +19,8 @@ pub struct LogWatcher {
     cfg: BurritoCfg,
     data: BurritoData,
     log_readers: Vec<LogReader>,
+    old_log_hashes: BloomFilter,
+    recent_post_cache: HashMap<(String, String), i64>,
     sys_map: SystemMap,// TODO: should be &SystemMap
 }
 
@@ -34,35 +38,52 @@ impl LogWatcher {
         ctx: SystemContext,
         cfg: BurritoCfg,
         data: BurritoData,
-        log_readers: Vec<LogReader>,
         sys_map: SystemMap,
     ) -> Self {
         Self {
             ctx,
             cfg,
             data,
-            log_readers,
+            log_readers: vec![],
+            old_log_hashes: BloomFilter::new(),
+            recent_post_cache: HashMap::new(),
             sys_map,
         }
     }
 
+    pub fn init(&mut self) {
+        // Ignore all files that exist before Burrito starts
+        self.ignore_logs();
+    }
+
     pub fn get_events(&mut self) -> Vec<LogEvent> {// TODO: Fix game log cooldown logic
+        let new_log_readers = self.update_log_readers();
+        self.log_readers.extend(new_log_readers);
         let mut events = LogEventQueue::new(self.cfg.game_log_alert_cd_ms);
-        self.log_readers.iter_mut().for_each( |reader| {
+        let event_time = chrono::offset::Utc::now();
+        self.update_recent_post_cache(event_time.timestamp_millis());
+        for reader in &mut self.log_readers {
             let result = reader.read_to_end();
             for line in result.lines {
-                let mut event_time = chrono::offset::Utc::now();
-                let ts_regex = Regex::new(TIMESTAMP_REGEX).unwrap();
+                // TODO: eve time is out of sync with Rust time by like half a minute
+                /*let ts_regex = Regex::new(TIMESTAMP_REGEX).unwrap();
                 if let Some(ts) = ts_regex.captures(&line) {
                     let ts = ts.get(0).unwrap().as_str();
-                    let ts_result = Utc.datetime_from_str(ts, TS_FMT);
+                    let _ts_result = Utc.datetime_from_str(ts, TS_FMT);
                     event_time = ts_result.unwrap().into();
-                }
+                }*/
                 if reader.is_chatlog_reader() {
                     let regex = Regex::new(CHAT_LOG_REGEX).unwrap();
                     if let Some(cap) = regex.captures(&line) {
                         let sender = &cap["sender"];
                         let content = &cap["content"];
+                        let cache_key = (sender.to_owned(), content.to_owned());
+                        if self.recent_post_cache.contains_key(&cache_key) {
+                            continue;
+                        }
+                        else {
+                            self.recent_post_cache.insert(cache_key, event_time.timestamp_millis());
+                        }
                         let d = self.ctx.process_message(content.to_owned(), &self.sys_map);
                         match sender {
                             SYSTEM_MESSAGE_SENDER => {
@@ -168,9 +189,89 @@ impl LogWatcher {
                     }
                 }
             }
-        });
+        }
         events.get_log_events().into_iter().cloned().collect()
     }
+
+    fn update_recent_post_cache(&mut self, current_time_ms: i64) {
+        let map = self.recent_post_cache.clone();
+        let keys = map.keys();
+        for key in keys {
+            let then = *self.recent_post_cache.get(&key).unwrap();
+            if (current_time_ms - then) >= self.cfg.recent_post_cache_ttl_ms {
+                self.recent_post_cache.remove(&key);
+            }
+        }
+    }
+
+    fn update_log_readers(&mut self) -> Vec<LogReader> {
+        let mut readers = vec![];
+        let mut game_log_dir = self.cfg.log_dir.to_owned();
+        let mut chat_log_dir = game_log_dir.clone();
+        game_log_dir.push_str("/Gamelogs/");
+        chat_log_dir.push_str("/Chatlogs/");
+        let files = std::fs::read_dir(&game_log_dir)
+            .expect("Game log directory not found!");
+        files.into_iter().for_each(|file| {
+            let file = file.unwrap();
+            let filename = file.file_name();
+            let filename = filename.to_string_lossy();
+            if !self.old_log_hashes.probably_contains(&filename) {
+                self.old_log_hashes.insert(&filename);
+                let mut file_path = game_log_dir.clone();
+                file_path.push_str(&filename);
+                let mut game_log_reader =
+                    LogReader::new_gamelog_reader(&file_path);
+                _ = game_log_reader.read_to_end();
+                readers.push(game_log_reader);
+            }
+        });
+        let files = std::fs::read_dir(&chat_log_dir)
+            .expect("Chat log directory not found!");
+        files.into_iter().for_each(|file| {
+            let file = file.unwrap();
+            let filename = file.file_name();
+            let filename = filename.to_str().unwrap();
+            for channel in self.cfg.text_channel_config.text_channels.iter() {
+                if filename.starts_with(channel.get_channel().as_str()) {
+                    if !self.old_log_hashes.probably_contains(&filename) {
+                        self.old_log_hashes.insert(&filename);
+                        let mut file_path = chat_log_dir.clone();
+                        file_path.push_str(&filename);
+                        let mut chat_log_reader =
+                            LogReader::new_chatlog_reader(&file_path);
+                        _ = chat_log_reader.read_to_end();
+                        readers.push(chat_log_reader);
+                    }
+                }
+            }
+        });
+        readers
+    }
+
+    fn ignore_logs(&mut self) {
+        let mut game_log_dir = self.cfg.log_dir.to_owned();
+        let mut chat_log_dir = game_log_dir.clone();
+        game_log_dir.push_str("/Gamelogs/");
+        chat_log_dir.push_str("/Chatlogs/");
+        let files = std::fs::read_dir(&game_log_dir)
+            .expect("Game log directory not found!");
+        files.into_iter().for_each(|file| {
+            let file = file.unwrap();
+            let filename = file.file_name();
+            let filename = filename.to_string_lossy();
+            self.old_log_hashes.insert(&filename);
+        });
+        let files = std::fs::read_dir(&chat_log_dir)
+            .expect("Chat log directory not found!");
+        files.into_iter().for_each(|file| {
+            let file = file.unwrap();
+            let filename = file.file_name();
+            let filename = filename.to_str().unwrap();
+            self.old_log_hashes.insert(&filename);
+        });
+    }
+
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
@@ -232,5 +333,68 @@ impl LogEventQueue {
     }
     pub fn get_log_events(&self) -> &Vec<LogEvent> {
         &self.log_events
+    }
+}
+
+#[derive(Clone, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+pub enum IntelChannel {
+    Aridia,
+    Branch,
+    Catch,
+    CloudRing,
+    CobaltEdge,
+    Curse,
+    Deklein,
+    Delve,
+    Fade,
+    Fountain,
+    Geminate,
+    Khanid,
+    Lonetrek,
+    ParagonSoul,
+    PeriodBasis,
+    Pochven,
+    Providence,
+    PureBlind,
+    Querious,
+    Syndicate,
+    Tenal,
+    Tribute,
+    ValeOfTheSilent,
+    Venal,
+    Gj,
+    Custom{channel: String}
+}
+
+impl IntelChannel {
+    fn get_channel(&self) -> String {
+        match self {
+            IntelChannel::Aridia => "aridia.imperium".to_owned(),
+            IntelChannel::Branch => "brn.imperium".to_owned(),
+            IntelChannel::Catch => "catch.imperium".to_owned(),
+            IntelChannel::CloudRing => "cr.imperium".to_owned(),
+            IntelChannel::CobaltEdge => "ce.imperium".to_owned(),
+            IntelChannel::Curse => "curse.imperium".to_owned(),
+            IntelChannel::Deklein => "dek.imperium".to_owned(),
+            IntelChannel::Delve => "delve.imperium".to_owned(),
+            IntelChannel::Fade => "fade.imperium".to_owned(),
+            IntelChannel::Fountain => "ftn.imperium".to_owned(),
+            IntelChannel::Geminate => "gem.imperium".to_owned(),
+            IntelChannel::Khanid => "khanid.imperium".to_owned(),
+            IntelChannel::Lonetrek => "lone.imperium".to_owned(),
+            IntelChannel::ParagonSoul => "paragon.imperium".to_owned(),
+            IntelChannel::PeriodBasis => "period.imperium".to_owned(),
+            IntelChannel::Pochven => "triangle.imperium".to_owned(),
+            IntelChannel::Providence => "provi.imperium".to_owned(),
+            IntelChannel::PureBlind => "pb.imperium".to_owned(),
+            IntelChannel::Querious => "querious.imperium".to_owned(),
+            IntelChannel::Syndicate => "synd.imperium".to_owned(),
+            IntelChannel::Tenal => "tnl.imperium".to_owned(),
+            IntelChannel::Tribute => "tri.imperium".to_owned(),
+            IntelChannel::ValeOfTheSilent => "vale.imperium".to_owned(),
+            IntelChannel::Venal => "vnl.imperium".to_owned(),
+            IntelChannel::Gj => "gj.imperium".to_owned(),
+            Self::Custom { channel } => channel.to_owned(),
+        }
     }
 }

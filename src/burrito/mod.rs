@@ -1,5 +1,6 @@
 
 pub mod alert;
+pub mod bloom_filter;
 pub mod burrito_cfg;
 pub mod burrito_data;
 pub mod json_struct;

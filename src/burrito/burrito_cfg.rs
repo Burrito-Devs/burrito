@@ -2,7 +2,7 @@ use std::collections::{BTreeSet, HashSet};
 
 use serde_derive::{Deserialize, Serialize};
 
-use super::{log_watcher::EventType, serde_utils, utils, log_reader::IntelChannel};
+use super::{log_watcher::EventType, serde_utils, utils, log_watcher::IntelChannel};
 
 #[derive(Clone, Deserialize, Serialize)]
 pub struct BurritoCfg {
@@ -11,9 +11,9 @@ pub struct BurritoCfg {
     #[serde(default)]
     pub log_update_interval_ms: u64,
     #[serde(default)]
-    pub num_game_log_readers: usize,
-    #[serde(default)]
     pub game_log_alert_cd_ms: u64,
+    #[serde(default)]
+    pub recent_post_cache_ttl_ms: i64,
     #[serde(default)]
     pub sound_config: AudioAlertConfig,
     #[serde(default)]
@@ -33,8 +33,8 @@ impl Default for BurritoCfg {
         Self {
             log_dir: format!("{}/Documents/Eve/logs/", utils::get_home_dir()).to_owned(),
             log_update_interval_ms: 500,
-            num_game_log_readers: 10,
             game_log_alert_cd_ms: 5000,
+            recent_post_cache_ttl_ms: 30000,
             sound_config: Default::default(),
             text_channel_config: Default::default(),
         }
