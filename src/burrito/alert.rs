@@ -2,7 +2,7 @@ use std::{io::{BufReader, Write}, fs::File, thread};
 use rodio::{Decoder, OutputStream, Sink};
 use termcolor::{StandardStream, ColorSpec, WriteColor};
 
-use super::log_watcher::EventType;
+use super::log_watcher::{EventType, LogEvent};
 
 fn play_file(path: String) {// TODO: Remove panics
     thread::spawn(move || {
@@ -15,9 +15,31 @@ fn play_file(path: String) {// TODO: Remove panics
     });
 }
 
+pub fn alert(event: &LogEvent, trigger: &str, character_or_system_name: &str, sound_file: Option<&str>) {
+    let event_type = event.event_type.to_owned();
+    let mut stdout = StandardStream::stdout(termcolor::ColorChoice::Auto);
+    _ = stdout.set_color(&get_color_spec(&event_type));
+    match event_type {
+        EventType::RangeOfSystem(_) => {
+            _ = write!(&mut stdout, "{}", event.message);
+        },
+        EventType::FactionSpawn | EventType::DreadSpawn | EventType::OfficerSpawn => {
+            _ = write!(&mut stdout, "[{}] {}", character_or_system_name, trigger);
+        },
+        _ => {
+            // TODO: Everything else
+        },
+    }
+    if let Some(filename) = sound_file {
+        play_file(filename.to_owned());
+    }
+    _ = stdout.set_color(ColorSpec::new().set_fg(None).set_bg(None).set_bold(false));
+    _ = writeln!(&mut stdout, "");
+}
+
 fn get_color_spec(event_type: &EventType) -> ColorSpec {
     match event_type {
-        EventType::NeutInRange(_) => {
+        EventType::RangeOfSystem(_) => {
             ColorSpec::new()
                 .set_bg(None)
                 .set_fg(Some(termcolor::Color::Red))
@@ -50,25 +72,4 @@ fn get_color_spec(event_type: &EventType) -> ColorSpec {
             ColorSpec::new().set_fg(None).set_bg(None).set_bold(false).to_owned()
         },
     }
-}
-
-pub fn alert(event_type: EventType, trigger: &str, character_or_system_name: &str, sound_file: Option<&str>) {
-    let mut stdout = StandardStream::stdout(termcolor::ColorChoice::Auto);
-    _ = stdout.set_color(&get_color_spec(&event_type));
-    match event_type {
-        EventType::NeutInRange(d) => {
-            _ = write!(&mut stdout, "Alert! Hostiles {} jumps away from {}!", d, character_or_system_name);
-        },
-        EventType::FactionSpawn | EventType::DreadSpawn | EventType::OfficerSpawn => {
-            _ = write!(&mut stdout, "[{}] {}", character_or_system_name, trigger);
-        },
-        _ => {
-            // TODO: Everything else
-        },
-    }
-    if let Some(filename) = sound_file {
-        play_file(filename.to_owned());
-    }
-    _ = stdout.set_color(ColorSpec::new().set_fg(None).set_bg(None).set_bold(false));
-    _ = writeln!(&mut stdout, "");
 }

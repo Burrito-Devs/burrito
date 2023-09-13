@@ -116,7 +116,7 @@ impl LogWatcher {
                                 }
                             }
                             _ => {
-                                let mut event_type = EventType::NeutInRange(d);
+                                let mut event_type = EventType::RangeOfSystem(d);
                                 let mut message = format!("Hostiles {} jumps away!", d);
                                 let content_lower = content.to_lowercase().replace("?", "").replace(".", "");
                                 if content_lower.ends_with("status") || content_lower.ends_with("stat") {
@@ -279,7 +279,8 @@ impl LogWatcher {
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum EventType {
-    NeutInRange(u32),
+    RangeOfSystem(u32),
+    RangeOfCharacter(u32),
     SystemClear(u32),
     SystemStatusRequest(u32),
     FactionSpawn,
