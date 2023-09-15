@@ -1,4 +1,4 @@
-use std::{env, time::Duration};
+use std::{/*env, */time::Duration};
 
 use burrito::burrito::{burrito_cfg::BurritoCfg, burrito_data::BurritoData, systems::SystemContext, log_watcher::{EventType, LogWatcher}};
 use burrito::burrito::systems;
@@ -6,19 +6,10 @@ use burrito::burrito::alert;
 
 fn main() {
     eprintln!("Burrito starting up");
-    let args: Vec<String> = env::args().collect();
+    //let args: Vec<String> = env::args().collect();
     let cfg = BurritoCfg::load_from_file();
     let data = BurritoData::load_from_file();
-    let mut current_system = None;
-    if args.len() > 1 {
-        current_system = Some(args[1].to_owned());
-    }
-    let ctx = SystemContext::new(current_system);
-    if ctx.get_current_system().len() < 1 {
-        eprintln!("No system specified. To set/change current system, use `burrito <system>`");
-        std::process::exit(1)
-    }
-    eprintln!("Setting current system to {}", ctx.get_current_system());
+    let ctx = SystemContext::new(&cfg);
 
     run_burrito(ctx, cfg, data);
 }
@@ -34,15 +25,28 @@ fn run_burrito(ctx: SystemContext, cfg: BurritoCfg, data: BurritoData) {
     );
     log_watcher.init();
     eprintln!("Burrito ready!");
+    let mut range_alert_played = false;
     loop {
         log_watcher.get_events().into_iter().for_each(|event| {
             println!("{}", &event.trigger);
             match event.event_type {
-                EventType::RangeOfSystem(event_distance) => {
+                EventType::RangeOfSystem(event_distance, _) | EventType::RangeOfCharacter(event_distance, _) => {
                     for alert in &cfg.sound_config.audio_alerts {
-                        if let EventType::RangeOfSystem(alert_distance) = alert.trigger {
+                        if let EventType::RangeOfCharacter(alert_distance, _) = alert.trigger {
                             if event_distance <= alert_distance {
-                                alert::alert(&event, &event.trigger, &event.character_name, Some(&alert.sound_file));
+                                if !range_alert_played {
+                                    alert::alert(&event, &event.trigger, &event.character_name, Some(&alert.sound_file));
+                                    range_alert_played = true;
+                                }
+                                break;
+                            }
+                        }
+                        if let EventType::RangeOfSystem(alert_distance, _) = alert.trigger {
+                            if event_distance <= alert_distance {
+                                if !range_alert_played {
+                                    alert::alert(&event, &event.trigger, &event.character_name, Some(&alert.sound_file));
+                                    range_alert_played = true;
+                                }
                                 break;
                             }
                         }
@@ -69,6 +73,7 @@ fn run_burrito(ctx: SystemContext, cfg: BurritoCfg, data: BurritoData) {
                 _ => {}// TODO: The rest of the events
             }
         });
+        range_alert_played = false;
         std::thread::sleep(Duration::from_millis(cfg.log_update_interval_ms))
     }
 }

@@ -1,10 +1,13 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::Write;
 use std::{fs::File, io::BufReader};
 
 use serde_derive::{Deserialize, Serialize};
 use serde_with::serde_as;
 
+use crate::burrito::log_watcher::EventType;
+
+use super::burrito_cfg::BurritoCfg;
 use super::path_cache::PathCache;
 use super::utils;
 
@@ -29,30 +32,48 @@ impl From<u64> for SystemId {
     }
 }
 
-#[serde_as]
+impl From<&u64> for SystemId {
+    fn from(value: &u64) -> Self {
+        SystemId(*value)
+    }
+}
+
+#[derive(Clone, Debug, Eq, Default, Deserialize, PartialEq, Serialize)]
+pub struct DistanceResults {
+    pub character_results: HashMap<String, Distance>,
+    pub system_results: HashMap<String, Distance>,
+}
+
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct SystemContext {
     /// Version of this SystemContext was created in
     ///
     /// A version bump signals map changes and signals that cached paths should be
     /// cleared.
+    #[serde(default)]
     version: u64,
-    /// Current system for which to provide alerts
-    current_system: String,
+    /// Current systems for which to provide alerts
+    #[serde(skip)]
+    current_systems: HashSet<String>,
+    /// Characters for which to provide alerts
+    /// This map is character name -> last known system id
+    #[serde(skip)]
+    current_characters: HashMap<String, u64>,
     /// Cache for computer paths between two systems
     ///
     /// The first time the path between systems is checked, the result will be
     /// cached. This avoids expensive pathfinding for systems that get reported
     /// often. It is likely that players are sticking to a single region, so the
     /// same systems will repeatedly be reported.
+    #[serde(default)]
     path_cache: PathCache,
 }
 
 // TODO: rewrite this entire thing. Cache entire system map and BFS to find route
 // Can optimize out cases such as Polaris or J[0-9]{1,}
 impl SystemContext {
-    pub fn new(current_system: Option<String>) -> Self {
-        load_saved_context(current_system)
+    pub fn new(cfg: &BurritoCfg) -> Self {
+        load_saved_context(cfg)
     }
 
     fn save(&self) {
@@ -70,48 +91,83 @@ impl SystemContext {
             .expect("Failed to write context to file");
     }
 
-    fn distance(&mut self, my_system: String, other_system: String, sys_map: &SystemMap) -> Distance {
-        let my_sys_id = get_system_id(my_system, sys_map);
-        let other_sys_id = get_system_id(other_system, sys_map);
-        if (my_sys_id == None) || (other_sys_id == None) {
-            return Distance::RouteFetchErr;
+    fn distances(&mut self, event_system: String, sys_map: &SystemMap) -> Option<DistanceResults> {
+        let event_sys_id = get_system_id(event_system, sys_map);
+        if event_sys_id == None {
+            return None;
         }
-        let key = (my_sys_id.unwrap(), other_sys_id.unwrap());
-        if let Some(path) = self.path_cache.search(&key) {
-            self.save();
-            path.to_owned()
+        let event_sys_id = event_sys_id.unwrap();
+        let mut result = DistanceResults::default();
+        // TODO: Is to_owned() sane here?
+        for system in &self.current_systems {
+            let my_sys_id = get_system_id(system.to_owned(), &sys_map);
+            let my_sys_id = my_sys_id
+                .expect(format!("Invalid system in config: {}", &system).as_str());
+            let key = (my_sys_id, event_sys_id);
+            let distance = {
+                if let Some(path) = self.path_cache.search(&key) {
+                    self.save();
+                    path.to_owned()
+                }
+                else {
+                    let fetched_distance = fetch_distance(my_sys_id, event_sys_id);
+                    self.path_cache.insert(key, fetched_distance.clone());
+                    self.save();
+                    fetched_distance
+                }
+            };
+            result.system_results.insert(system.to_owned(), distance);
         }
-        else {
-            let fetched_distance = fetch_distance(my_sys_id.unwrap(), other_sys_id.unwrap());
-            self.path_cache.insert(key, fetched_distance.clone());
-            self.save();
-            return fetched_distance;
+        for character_entry in &self.current_characters {
+            let char_sys_id = character_entry.1;
+            let key = (char_sys_id.into(), event_sys_id);
+            let distance = {
+                if let Some(path) = self.path_cache.search(&key) {
+                    self.save();
+                    path.to_owned()
+                }
+                else {
+                    let fetched_distance = fetch_distance(char_sys_id.into(), event_sys_id);
+                    self.path_cache.insert(key, fetched_distance.clone());
+                    self.save();
+                    fetched_distance
+                }
+            };
+            result.character_results.insert(character_entry.0.to_owned(), distance);
         }
+        Some(result)
     }
 
-    pub fn process_message(&mut self, message: String, sys_map: &SystemMap) -> u32 {
+    pub fn process_message(&mut self, message: String, sys_map: &SystemMap) -> Option<DistanceResults> {
         for word in message.split(" ") {
             let word = word.to_owned().replace("*", "");
-            if word.len() <= 2 {
+            if word.len() < 3 {
                 continue;
             }
             if let Some(_) = get_system_id(word.to_owned(), sys_map) {
-                return self.distance(
-                    self.current_system.to_owned(),
+                return self.distances(
                     word.to_owned(),
                     sys_map
-                ).get_route();
+                );
             }
         }
-        u32::MAX
+        None
     }
 
-    pub fn get_current_system(&self) -> &str {
-        &self.current_system
+    pub fn get_current_systems(&self) -> &HashSet<String> {
+        &self.current_systems
     }
 
-    pub fn set_current_system(&mut self, current_system: &str) {
-        self.current_system = current_system.to_owned();
+    pub fn set_current_system(&mut self, current_systems: HashSet<String>) {
+        self.current_systems = current_systems;
+    }
+
+    pub fn get_current_characters(&self) -> &HashMap<String, u64> {
+        &self.current_characters
+    }
+
+    pub fn set_current_characters(&mut self, current_characters: HashMap<String, u64>) {
+        self.current_characters = current_characters;
     }
 
 }
@@ -132,7 +188,7 @@ pub struct SystemMap {
     systems: HashMap<u64, System>,
 }
 
-fn load_saved_context(current_system: Option<String>) -> SystemContext {
+fn load_saved_context(cfg: &BurritoCfg) -> SystemContext {
     let mut path = setup_data_dir();
     const CTX_FILE: &str = "/ctx.json";
     let path_cache = Default::default();
@@ -149,9 +205,17 @@ fn load_saved_context(current_system: Option<String>) -> SystemContext {
         ctx = serde_json::from_reader(reader)
             .expect("Failed to deserialize saved context");
     }
-    if current_system.is_some() {
-        ctx.current_system = current_system.unwrap();
-    }
+    cfg.sound_config.audio_alerts.iter().for_each(|alert| {
+        match &alert.trigger {
+            EventType::RangeOfSystem(_, system_name) => {
+                ctx.current_systems.insert(system_name.to_owned());
+            },
+            EventType::RangeOfCharacter(_, char_name) => {
+                ctx.current_characters.insert(char_name.to_owned(), 0);
+            },
+            _ => {},
+        }
+    });
     ctx.save();
     ctx
 }
@@ -267,7 +331,7 @@ pub struct Position {
     pub z: f64,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum Distance {
     NoRoute,
     #[default]
@@ -276,7 +340,7 @@ pub enum Distance {
 }
 
 impl Distance {
-    fn get_route(&self) -> u32 {
+    pub fn get_route(&self) -> u32 {
         match self {
             Distance::NoRoute => u32::MAX,
             Distance::RouteFetchErr => u32::MAX - 1,

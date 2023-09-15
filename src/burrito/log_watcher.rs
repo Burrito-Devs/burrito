@@ -84,7 +84,11 @@ impl LogWatcher {
                         else {
                             self.recent_post_cache.insert(cache_key, event_time.timestamp_millis());
                         }
-                        let d = self.ctx.process_message(content.to_owned(), &self.sys_map);
+                        let dist_results = self.ctx.process_message(content.to_owned(), &self.sys_map);
+                        if dist_results.is_none() {
+                            continue;
+                        }
+                        let dist_results = dist_results.unwrap();
                         match sender {
                             SYSTEM_MESSAGE_SENDER => {
                                 match content {
@@ -116,26 +120,57 @@ impl LogWatcher {
                                 }
                             }
                             _ => {
-                                let mut event_type = EventType::RangeOfSystem(d);
-                                let mut message = format!("Hostiles {} jumps away!", d);
-                                let content_lower = content.to_lowercase().replace("?", "").replace(".", "");
-                                if content_lower.ends_with("status") || content_lower.ends_with("stat") {
-                                    event_type = EventType::SystemStatusRequest(d);
-                                    message = format!("Status request!");
-                                }
-                                if content_lower.ends_with("clr") || content_lower.ends_with("clear") {
-                                    event_type = EventType::SystemClear(d);
-                                    message = format!("System clear!");
-                                }
-                                events.push_chat_log_event(
-                                    LogEvent {
-                                        time: event_time,
-                                        character_name: reader.get_character_name(),
-                                        event_type: event_type,
-                                        trigger: line.to_owned(),
-                                        message: message
+                                // TODO: this is terrible. Do this without copy pasting all the code and chaning two values
+                                //       maybe a way to combine the destination result fields and match on some enum?
+                                //       Either this, this will work for now and is explicit, so it can be improved later.
+                                for sys_result in dist_results.system_results {
+                                    let event_distance = sys_result.1.get_route();
+                                    let reference_system = sys_result.0;
+                                    let mut event_type = EventType::RangeOfSystem(event_distance, reference_system.to_owned());
+                                    let mut message = format!("Hostiles {} jumps away from {}!", event_distance, &reference_system);
+                                    let content_lower = content.to_lowercase().replace("?", "").replace(".", "");
+                                    if content_lower.ends_with("status") || content_lower.ends_with("stat") {
+                                        message = format!("{} status request!", &reference_system);
+                                        event_type = EventType::SystemStatusRequestRangeSystem(event_distance, reference_system);
                                     }
-                                )
+                                    else if content_lower.ends_with("clr") || content_lower.ends_with("clear") {
+                                        message = format!("{} clear!", &reference_system);
+                                        event_type = EventType::SystemClearRangeSystem(event_distance, reference_system);
+                                    }
+                                    events.push_chat_log_event(
+                                        LogEvent {
+                                            time: event_time,
+                                            character_name: reader.get_character_name(),
+                                            event_type: event_type,
+                                            trigger: line.to_owned(),
+                                            message: message
+                                        }
+                                    );
+                                }
+                                for char_result in dist_results.character_results {
+                                    let event_distance = char_result.1.get_route();
+                                    let reference_character = char_result.0;
+                                    let mut event_type = EventType::RangeOfCharacter(event_distance, reference_character.to_owned());
+                                    let mut message = format!("Hostiles {} jumps away from {}!", event_distance, &reference_character);
+                                    let content_lower = content.to_lowercase().replace("?", "").replace(".", "");
+                                    if content_lower.ends_with("status") || content_lower.ends_with("stat") {
+                                        message = format!("Status request {} jumps from {}'s system!", event_distance, &reference_character);
+                                        event_type = EventType::SystemStatusRequestRangeCharacter(event_distance, reference_character);
+                                    }
+                                    else if content_lower.ends_with("clr") || content_lower.ends_with("clear") {
+                                        message = format!("{} jumps from {}'s system clear!", event_distance, &reference_character);
+                                        event_type = EventType::SystemClearRangeCharacter(event_distance, reference_character);
+                                    }
+                                    events.push_chat_log_event(
+                                        LogEvent {
+                                            time: event_time,
+                                            character_name: reader.get_character_name(),
+                                            event_type: event_type,
+                                            trigger: line.to_owned(),
+                                            message: message
+                                        }
+                                    );
+                                }
                             }
                         }
                     }
@@ -279,10 +314,12 @@ impl LogWatcher {
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum EventType {
-    RangeOfSystem(u32),
-    RangeOfCharacter(u32),
-    SystemClear(u32),
-    SystemStatusRequest(u32),
+    RangeOfSystem(u32, String),
+    RangeOfCharacter(u32, String),
+    SystemClearRangeSystem(u32, String),
+    SystemStatusRequestRangeSystem(u32, String),
+    SystemClearRangeCharacter(u32, String),
+    SystemStatusRequestRangeCharacter(u32, String),
     FactionSpawn,
     DreadSpawn,
     TitanSpawn,
