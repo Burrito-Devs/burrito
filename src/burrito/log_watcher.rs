@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::SystemTime, fs::DirEntry};
 
 use chrono::{DateTime, Utc};
 use regex::Regex;
@@ -53,7 +53,7 @@ impl LogWatcher {
 
     pub fn init(&mut self) {
         // Ignore all files that exist before Burrito starts
-        self.ignore_logs();
+        self.ignore_old_logs_and_watch_recent();
     }
 
     pub fn get_events(&mut self) -> Vec<LogEvent> {// TODO: Fix game log cooldown logic
@@ -251,30 +251,65 @@ impl LogWatcher {
         readers
     }
 
-    // TODO: open most recently modified of each subscribed channel on startup
-    fn ignore_logs(&mut self) {
+    fn ignore_old_logs_and_watch_recent(&mut self) {
         let mut game_log_dir = self.cfg.log_dir.to_owned();
         let mut chat_log_dir = game_log_dir.clone();
         game_log_dir.push_str("/Gamelogs/");
         chat_log_dir.push_str("/Chatlogs/");
         let files = std::fs::read_dir(&game_log_dir)
             .expect("Game log directory not found!");
-        files.into_iter().for_each(|file| {
-            let file = file.unwrap();
+        files.into_iter().filter_map(|file| file.ok()).for_each(|file| {
             let filename = file.file_name();
             let filename = filename.to_string_lossy();
+            if modified_in_last_day(&file) {
+                if filename.ends_with(".txt") {
+                    let mut file_path = game_log_dir.clone();
+                    file_path.push_str(&filename);
+                    let mut game_log_reader =
+                        LogReader::new_gamelog_reader(&file_path);
+                    _ = game_log_reader.read_to_end();
+                    self.log_readers.push(game_log_reader);
+                }
+            }
             self.old_log_hashes.insert(&filename);
         });
         let files = std::fs::read_dir(&chat_log_dir)
             .expect("Chat log directory not found!");
-        files.into_iter().for_each(|file| {
-            let file = file.unwrap();
+        files.into_iter().filter_map(|file| file.ok()).for_each(|file| {
             let filename = file.file_name();
             let filename = filename.to_str().unwrap();
+            if modified_in_last_day(&file) {
+                self.cfg.text_channel_config.text_channels.iter().for_each(|channel| {
+                    if filename.starts_with(&channel.get_channel()) && filename.ends_with(".txt") {
+                        let mut file_path = chat_log_dir.clone();
+                        file_path.push_str(&filename);
+                        let mut chat_log_reader =
+                            LogReader::new_chatlog_reader(&file_path);
+                        _ = chat_log_reader.read_to_end();
+                        self.log_readers.push(chat_log_reader);
+                    }
+                });
+            }
             self.old_log_hashes.insert(&filename);
         });
     }
 
+}
+
+fn modified_in_last_day(dir_entry: &DirEntry) -> bool {
+    get_modified_ago(dir_entry) < 86400
+}
+
+fn get_modified_ago(dir_entry: &DirEntry) -> u64 {
+    if let Ok(metadata) = dir_entry.path().metadata() {
+        if let Ok(modified_time) = metadata.modified() {
+            let now = SystemTime::now();
+            if let Ok(modified_ago) = now.duration_since(modified_time) {
+                return modified_ago.as_secs();
+            }
+        }
+    }
+    return u64::MAX;
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
