@@ -11,7 +11,7 @@ Out of the box, Burrito is configured to notify the user using text and sound wh
 * NPC capital ship spawn
 * NPC officer spawn
 
-All new chatlog files for configured channels will be monitored after starting Burrito. New game log files will also be monitored. If clients are closed or crash, there is no need to restart Burrito. It will find the new log files when you start new clients.
+All new chatlog files for configured channels will be monitored after starting Burrito. New game log files will also be monitored. Burrito also watches old log files that have been modified recently. If clients are closed or crash, there is no need to restart Burrito. It will find the new log files when you start new clients. Likewise, if Burrito either crashes or is closed, there is no need to restart any clients.
 
 ### Event triggers
 
@@ -29,9 +29,9 @@ When an event is produced, it may be ignored, it may be logged, or it may play a
 * Extract it to a temp directory.
 * Run the `install` script.
 * Open a Command Prompt window
-* Type `burrito <system_name>` where `<system_name>` should be replaced the exact system name you want to monitor.
+* Type `burrito <system_name>` where `<system_name>` should be replaced the exact system name you want to monitor (case-sensitive for now).
 
-Burrito should now be running and waiting for logs from your Eve clients. Once Burrito is running, you can start the Eve clients you want to monitor. To exit burrito, press Ctrl+C in the Command Prompt window. If you restart Burrito, you will need to restart any Eve clients that you want to monitor.
+Burrito should now be running and both monitoring recent logs and waiting for logs from your Eve clients. To exit burrito, press Ctrl+C in the Command Prompt window.
 
 #### Linux
 
@@ -40,8 +40,6 @@ Burrito should now be running and waiting for logs from your Eve clients. Once B
 * Extract the contents of the `data` folder into the new `.burrito` folder. Do not copy the `data` folder itself, just its contents
 * Extract the Burrito binary wherever you want to run it from. Either your home directory or any place that is already in your PATH is probably easiest
 * Run `burrito <system_name>` where `<system_name>` should be replaced the exact system name you want to monitor.
-
-The same note about closing clients and restarting Burrito in the Windows section above applies here as well.
 
 ### Running Burrito
 
@@ -101,5 +99,4 @@ Burrito is currently in a pre-release state. Presently it is considered to have 
 * Fixing basically every `panic`
 * A lot of heavy refactoring and cleaning/optimization of existing code: Burrito was originally written in 2 hours because I wanted to AFK rat and T.A.C.O did not work for me on Linux. There were a lot of short-cuts taken in order to get it working faster and I have slowly been going through and fixing them. This is also the first full project I've started from scratch in Rust, so I am also getting used to using Rust to do things the "Rust" way.
 * `.clone() .clone() .clone() .clone() .clone() .clone() .clone() .clone() .clone() .clone()`
-* Smarter handling of the most current log file(s)
 * Configurable sound output device
