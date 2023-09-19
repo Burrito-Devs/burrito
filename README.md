@@ -62,7 +62,7 @@ Burrito supports a variety of user-added audio alerts. By default, it alerts the
 ```JSON
 {
     "trigger": {
-        "NeutInRange": 5
+        "RangeOfSystem": 5
     },
     "sound_file": "/home/the_bernie/.burrito/sounds/neut_in_range.mp3"
 }
