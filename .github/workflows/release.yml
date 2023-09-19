@@ -1,0 +1,62 @@
+name: release
+
+# only perform these build steps on non-pre-release
+on:
+  push:
+    tags:
+      - "v*"
+      - "!v*-pre*"
+
+jobs:
+  release:
+    runs-on: [self-hosted, macOS]
+    # Needs write permission for publishing release
+    permissions:
+      contents: write
+
+    steps:
+      - name: Get Current Pre-Release
+        id: current_release
+        uses: joutvhu/get-release@v1
+        with:
+          debug: true
+          latest: true
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download Latest Pre-Release
+        uses: duhow/download-github-release-assets@v1
+        with:
+          tag: ${{ steps.current_release.outputs.tag_name }}
+          files: |
+            ${{ steps.current_release.outputs.tag_name }}-macOS-X64.tar.gz
+            ${{ steps.current_release.outputs.tag_name }}-macOS-ARM64.tar.gz
+          target: /var/tmp/
+
+      - name: Extract Release
+        run: |
+          rm -rfv build_artifacts
+          tag=${{ steps.current_release.outputs.tag_name }}
+          mkdir -pv build_artifacts/burrito-${tag}-macOS-X64
+          tar xzvf /var/tmp/${tag}-macOS-X64.tar.gz -C build_artifacts/burrito-${tag}-macOS-X64
+          mkdir -pv build_artifacts/burrito-${tag}-macOS-ARM64
+          tar xzvf /var/tmp/${tag}-macOS-ARM64.tar.gz -C build_artifacts/burrito-${tag}-macOS-ARM64
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          mkdir -pv release
+          cd release
+          tag=${{ steps.current_release.outputs.tag_name }}
+          tar -czvf burrito-${{ github.ref_name }}-macOS-X64-mainnet.tar.gz -C ../build_artifacts/ burrito-${tag}-macOS-X64/
+          tar -czvf burrito-${{ github.ref_name }}-macOS-ARM64-mainnet.tar.gz -C ../build_artifacts/ burrito-${tag}-macOS-ARM64/
+
+      - name: Upload Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          prerelease: false
+          files: |
+            release/*

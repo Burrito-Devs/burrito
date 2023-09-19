@@ -1,0 +1,80 @@
+name: build
+
+env:
+  RUST_BACKTRACE: full
+
+# only perform these build steps on pre-release or forced dev build
+on:
+  push:
+    tags:
+      - "v*-pre.*"
+      - "*.dev-build.*"
+
+jobs:
+  build-and-pre-release:
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        runner-tags: [[self-hosted, macOS, X64], [self-hosted, macOS, ARM64]]
+        include:
+          - runner-tags: [self-hosted, macOS, X64]
+            container: ""
+          - runner-tags: [self-hosted, macOS, ARM64]
+            container: ""
+
+    runs-on: ${{ matrix.runner-tags }}
+    container: ${{ matrix.container }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Brew Bundle
+        if: runner.os == 'macOS'
+        run: |
+          brew bundle
+
+      - name: Install Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly-2023-09-18
+          override: true
+          components: rustfmt, clippy
+
+      - name: Cargo Build
+        run: |
+          cargo build --release
+
+      - name: Copy binaries to cache folder
+        run: |
+          mkdir -pv build_artifacts
+          cp target/release/burrito build_artifacts
+
+      - name: Create Artifact
+        run: |
+          mkdir -pv artifact
+          cd artifact && tar -czvf ${{ github.sha }}-${{ runner.os }}-${{ runner.arch }}.tar.gz -C ../build_artifacts/ .
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: burrito_${{ runner.os }}-${{ runner.arch }}
+          path: artifact/${{ github.sha }}-${{ runner.os }}-${{ runner.arch }}.tar.gz
+
+      - name: Create Prerelease
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          mkdir -pv release
+          cd release && tar -czvf ${{ github.ref_name }}-${{ runner.os }}-${{ runner.arch }}.tar.gz -C ../build_artifacts/ .
+
+      - name: Upload Prerelease
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          prerelease: true
+          files: |
+            release/${{ github.ref_name }}-${{ runner.os }}-${{ runner.arch }}.tar.gz
