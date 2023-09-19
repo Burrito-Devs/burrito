@@ -16,11 +16,9 @@ jobs:
       contents: write
     strategy:
       matrix:
-        runner-tags: [[self-hosted, macOS, X64], [self-hosted, macOS, ARM64]]
+        runner-tags: [[self-hosted, macOS, X64]]
         include:
           - runner-tags: [self-hosted, macOS, X64]
-            container: ""
-          - runner-tags: [self-hosted, macOS, ARM64]
             container: ""
 
     runs-on: ${{ matrix.runner-tags }}
