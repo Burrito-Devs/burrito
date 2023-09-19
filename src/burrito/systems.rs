@@ -1,7 +1,8 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::io::Write;
 use std::{fs::File, io::BufReader};
 
+use regex::Regex;
 use serde_derive::{Deserialize, Serialize};
 use serde_with::serde_as;
 
@@ -82,10 +83,13 @@ impl SystemContext {
             path.to_owned()
         }
         else {
-            let fetched_distance = fetch_distance(my_sys_id.unwrap(), other_sys_id.unwrap());
-            self.path_cache.insert(key, fetched_distance.clone());
+            let computed_distance = match compute_distance(my_sys_id.unwrap().into(), other_sys_id.unwrap().into(), sys_map) {
+                Some(path) => Distance::Route { route: (path.route.len() - 1) as u32 },
+                None => Distance::NoRoute,
+            };
+            self.path_cache.insert(key, computed_distance.clone());
             self.save();
-            return fetched_distance;
+            return computed_distance;
         }
     }
 
@@ -177,26 +181,63 @@ fn setup_data_dir() -> String {
     full_path
 }
 
-fn fetch_distance(origin: SystemId, destination: SystemId) -> Distance {
-    let request =
-        format!("https://esi.evetech.net/latest/route/{}/{}/?datasource=tranquility&flag=shortest", origin, destination);
-    let response =
-        reqwest::blocking::get(request);
-    if response.is_err() {
-        eprintln!("Failed to query route {}, {}", origin, destination);
-        return Distance::RouteFetchErr;
+const J_SPACE_REGEX: &str = r#"^(J[0-9]{6}|Thera|Polaris|A821-A|J7HZ-F|UUA-F4)$"#;
+//const POCHVEN_REGION_ID: u64 = 10000070;// TODO: Handle Pochven base cases
+
+fn compute_distance(start_id: u64, end_id: u64, sys_map: &SystemMap) -> Option<Route> {
+    let start_system = sys_map.systems.get(&start_id).unwrap();
+    let end_system = sys_map.systems.get(&end_id).unwrap();
+
+    let start_str = start_system.name.as_str();
+    let end_str = end_system.name.as_str();
+    // Handle base cases of unreachable systems
+    let regex = Regex::new(J_SPACE_REGEX).unwrap();
+    if regex.captures(start_str).is_some() {
+        return None;
     }
-    let response = response.unwrap();
-    // No route found (ex: J-space)
-    if response.status().as_u16() == 404u16 {
-        return Distance::NoRoute;
+    if regex.captures(end_str).is_some() {
+        return None;
     }
-    let resp_json: Result<Vec<u32>, reqwest::Error> = response.json();
-    if resp_json.is_err() {
-        eprintln!("Invalid response for {} -> {}", origin, destination);
-        return Distance::RouteFetchErr;
+
+    let mut visited: HashSet<u64> = HashSet::new();
+    let mut queue: VecDeque<u64> = VecDeque::new();
+    let mut parent_map: HashMap<u64, u64> = HashMap::new();
+
+    queue.push_back(start_id);
+    visited.insert(start_id);
+
+    while let Some(curr_id) = queue.pop_front() {
+
+        if curr_id == end_id {
+            let mut path = vec![curr_id];
+            let mut next_id = curr_id;
+
+            while let Some(&parent_id) = parent_map.get(&next_id) {
+                path.push(parent_id);
+                next_id = parent_id;
+            }
+
+            path.reverse();
+            return Some(Route { route: path });
+
+        }
+
+        if let Some(curr_sys) = sys_map.systems.get(&curr_id) {
+            curr_sys.stargates.iter().map(|sg| sg.destination.system_id).for_each(|neighbor_id| {
+                if !visited.contains(&neighbor_id) {
+                    visited.insert(neighbor_id);
+                    queue.push_back(neighbor_id);
+                    parent_map.insert(neighbor_id, curr_id);
+                }
+            });
+        }
     }
-    Distance::Route { route: resp_json.unwrap().len() as u32 - 1 }
+    None
+}
+
+#[derive(Clone, Debug, Eq, Hash, Default, Deserialize, PartialEq, Serialize)]
+struct Route {
+    pub route: Vec<u64>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -283,4 +324,96 @@ impl Distance {
             Self::Route { route } => route.to_owned(),
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{collections::{HashSet, HashMap}, io::BufReader, fs::File, time::Instant};
+    use regex::Regex;
+    use rand::Rng;
+    use crate::burrito::systems::compute_distance;
+
+    use super::{SystemMap, Route, J_SPACE_REGEX, System};
+
+    #[test]
+    fn test_pathfinding() {
+        let mut rng = rand::thread_rng();
+        let sys_map: SystemMap = load_system_map();
+        let systems: Vec<System> =
+            sys_map.systems.iter().map(|e| e.1.to_owned()).collect();
+
+        // Test same system route (Jita)
+        assert_eq!(vec![30000142u64], compute_distance(30000142, 30000142, &sys_map).unwrap().route);
+
+        // Test unreachable (Jita -> Thera)
+        assert!(compute_distance(30000142, 31000005, &sys_map).is_none());
+        assert!(compute_distance(31000005, 30000142, &sys_map).is_none());
+
+        // Thera -> Polaris
+        assert!(compute_distance(31000005, 30000380, &sys_map).is_none());
+
+        // Test known route (Jita -> Amarr)
+        assert_eq!(12, compute_distance(30000142, 30002187, &sys_map).unwrap().route.len());
+        // 1DQ1-A -> Sakht
+        assert_eq!(12, compute_distance(30004759, 30004299, &sys_map).unwrap().route.len());
+
+        // Test randomly selected systems
+        let mut random_test_systems: HashMap<u64, u64> = HashMap::new();
+        for _ in 0..2000 {
+            let i1 = rng.gen_range(0..systems.len());
+            let i2 = rng.gen_range(0..systems.len());
+            random_test_systems.insert(systems[i1].system_id, systems[i2].system_id);
+        }
+        let time_before = Instant::now();
+        for case in random_test_systems {
+            let expected = find_route_unoptimized(case.0, case.1, &sys_map);
+            let actual = compute_distance(case.0, case.1, &sys_map);
+            assert_eq!(expected, actual);
+        }
+        let time = (Instant::now() - time_before).as_secs_f64();
+        eprintln!("Route computations finished in {} seconds", time);
+    }
+
+    fn find_route_unoptimized(start_id: u64, end_id: u64, sys_map: &SystemMap) -> Option<Route> {
+        let start_str = sys_map.systems.get(&start_id)
+            .unwrap().name.as_str();
+        let end_str = sys_map.systems.get(&end_id)
+            .unwrap().name.as_str();
+        let regex = Regex::new(J_SPACE_REGEX).unwrap();
+        if regex.captures(start_str).is_some() {
+            return None;
+        }
+        if regex.captures(end_str).is_some() {
+            return None;
+        }
+        let mut visited: HashSet<u64> = HashSet::new();
+        let mut queue: Vec<Vec<u64>> = vec![vec![start_id]];
+        while queue.len() > 0 {
+            let route = queue.remove(0);
+            let curr_id = *route.last().unwrap();
+            if curr_id == end_id {
+                return Some(Route { route });
+            }
+            else if visited.contains(&curr_id) {
+                continue;
+            }
+            visited.insert(curr_id);
+            if let Some(curr_sys) = sys_map.systems.get(&curr_id) {
+                curr_sys.stargates.iter().map(|sg| sg.destination.system_id)
+                    .for_each(|neighbor_id| {
+                        let mut candidate_route = route.clone();
+                        candidate_route.push(neighbor_id);
+                        queue.push(candidate_route);
+                    });
+            }
+        }
+        return None;
+    }
+
+    fn load_system_map() -> SystemMap {
+        let file = File::open("data/systems.json").unwrap();
+        let reader = BufReader::new(file);
+        serde_json::from_reader(reader).unwrap()
+    }
+
 }
