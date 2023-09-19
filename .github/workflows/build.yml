@@ -32,10 +32,10 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Brew Bundle
-        if: runner.os == 'macOS'
-        run: |
-          brew bundle
+      # - name: Brew Bundle
+      #   if: runner.os == 'macOS'
+      #   run: |
+      #     brew bundle
 
       - name: Install Rust Toolchain
         uses: actions-rs/toolchain@v1
