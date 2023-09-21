@@ -3,7 +3,8 @@ use std::collections::{BTreeMap, HashMap};
 use serde_derive::{Deserialize, Serialize};
 use serde_with::serde_as;
 
-use super::systems::{Distance, SystemId};
+use crate::burrito::systems::Distance;
+use crate::burrito::types::SystemId;
 
 #[serde_as]
 #[derive(Clone, Debug, Default, Eq, Deserialize, PartialEq, Serialize)]
