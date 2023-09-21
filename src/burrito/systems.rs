@@ -90,7 +90,7 @@ impl SystemContext {
         u32::MAX
     }
 
-pub fn get_current_system(&self) -> &str {
+    pub fn get_current_system(&self) -> &str {
         &self.current_system
     }
 
