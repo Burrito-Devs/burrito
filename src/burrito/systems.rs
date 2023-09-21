@@ -6,29 +6,9 @@ use regex::Regex;
 use serde_derive::{Deserialize, Serialize};
 use serde_with::serde_as;
 
-use super::path_cache::PathCache;
-use super::utils;
-
-#[derive(Clone, Copy, Debug, Eq, Hash, Default, Deserialize, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct SystemId(u64);
-
-impl std::fmt::Display for SystemId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl From<SystemId> for u64 {
-    fn from(sys_id: SystemId) -> Self {
-        sys_id.0
-    }
-}
-
-impl From<u64> for SystemId {
-    fn from(value: u64) -> Self {
-        SystemId(value)
-    }
-}
+use crate::burrito::path_cache::PathCache;
+use crate::burrito::types::{SystemId, StargateId, ConstellationId, StarId};
+use crate::burrito::utils;
 
 #[serde_as]
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -124,7 +104,7 @@ fn get_system_id(sys_name: String, sys_map: &SystemMap) -> Option<SystemId> {
     if let Some(entry) =
         sys_map.systems.iter()
         .find(|sys| sys.1.name == sys_name) {
-        return Some(SystemId(entry.0.to_owned()));
+        return Some(entry.0.to_owned());
     }
     None
 }
@@ -133,7 +113,7 @@ fn get_system_id(sys_name: String, sys_map: &SystemMap) -> Option<SystemId> {
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct SystemMap {
     #[serde_as(as = "HashMap<serde_with::json::JsonString, _>")]
-    systems: HashMap<u64, System>,
+    systems: HashMap<SystemId, System>,
 }
 
 fn load_saved_context(current_system: Option<String>) -> SystemContext {
@@ -182,9 +162,9 @@ fn setup_data_dir() -> String {
 }
 
 const J_SPACE_REGEX: &str = r#"^(J[0-9]{6}|Thera|Polaris|A821-A|J7HZ-F|UUA-F4)$"#;
-//const POCHVEN_REGION_ID: u64 = 10000070;// TODO: Handle Pochven base cases
+//const POCHVEN_REGION_ID: u32 = 10000070;// TODO: Handle Pochven base cases
 
-fn compute_distance(start_id: u64, end_id: u64, sys_map: &SystemMap) -> Option<Route> {
+fn compute_distance(start_id: SystemId, end_id: SystemId, sys_map: &SystemMap) -> Option<Route> {
     let start_system = sys_map.systems.get(&start_id).unwrap();
     let end_system = sys_map.systems.get(&end_id).unwrap();
 
@@ -199,9 +179,9 @@ fn compute_distance(start_id: u64, end_id: u64, sys_map: &SystemMap) -> Option<R
         return None;
     }
 
-    let mut visited: HashSet<u64> = HashSet::new();
-    let mut queue: VecDeque<u64> = VecDeque::new();
-    let mut parent_map: HashMap<u64, u64> = HashMap::new();
+    let mut visited: HashSet<SystemId> = HashSet::new();
+    let mut queue: VecDeque<SystemId> = VecDeque::new();
+    let mut parent_map: HashMap<SystemId, SystemId> = HashMap::new();
 
     queue.push_back(start_id);
     visited.insert(start_id);
@@ -237,13 +217,13 @@ fn compute_distance(start_id: u64, end_id: u64, sys_map: &SystemMap) -> Option<R
 
 #[derive(Clone, Debug, Eq, Hash, Default, Deserialize, PartialEq, Serialize)]
 struct Route {
-    pub route: Vec<u64>,
+    pub route: Vec<SystemId>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct System {
     #[serde(default)]
-    pub constellation_id: u64,
+    pub constellation_id: ConstellationId,
     #[serde(default)]
     pub name: String,
     #[serde(default)]
@@ -255,13 +235,13 @@ pub struct System {
     #[serde(default)]
     pub security_status: f64,
     #[serde(default)]
-    pub star_id: u64,
+    pub star_id: StarId,
     #[serde(default)]
     pub stargates: Vec<Stargate>,
     #[serde(default)]
     pub stations: Vec<u64>,
     #[serde(default)]
-    pub system_id: u64,
+    pub system_id: SystemId,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -273,9 +253,9 @@ pub struct Stargate {
     #[serde(default)]
     pub position: Position,
     #[serde(default)]
-    pub stargate_id: u64,
+    pub stargate_id: StargateId,
     #[serde(default)]
-    pub system_id: u64,
+    pub system_id: SystemId,
     #[serde(default)]
     pub type_id: u64,
 }
@@ -283,9 +263,9 @@ pub struct Stargate {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StargateDestination {
     #[serde(default)]
-    pub stargate_id: u64,
+    pub stargate_id: StargateId,
     #[serde(default)]
-    pub system_id: u64,
+    pub system_id: SystemId,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -331,7 +311,7 @@ mod tests {
     use std::{collections::{HashSet, HashMap}, io::BufReader, fs::File, time::Instant};
     use regex::Regex;
     use rand::Rng;
-    use crate::burrito::systems::compute_distance;
+    use crate::burrito::{systems::compute_distance, types::SystemId};
 
     use super::{SystemMap, Route, J_SPACE_REGEX, System};
 
@@ -343,22 +323,22 @@ mod tests {
             sys_map.systems.iter().map(|e| e.1.to_owned()).collect();
 
         // Test same system route (Jita)
-        assert_eq!(vec![30000142u64], compute_distance(30000142, 30000142, &sys_map).unwrap().route);
+        assert_eq!(vec![SystemId(30000142)], compute_distance(30000142.into(), 30000142.into(), &sys_map).unwrap().route);
 
         // Test unreachable (Jita -> Thera)
-        assert!(compute_distance(30000142, 31000005, &sys_map).is_none());
-        assert!(compute_distance(31000005, 30000142, &sys_map).is_none());
+        assert!(compute_distance(30000142.into(), 31000005.into(), &sys_map).is_none());
+        assert!(compute_distance(31000005.into(), 30000142.into(), &sys_map).is_none());
 
         // Thera -> Polaris
-        assert!(compute_distance(31000005, 30000380, &sys_map).is_none());
+        assert!(compute_distance(31000005.into(), 30000380.into(), &sys_map).is_none());
 
         // Test known route (Jita -> Amarr)
-        assert_eq!(12, compute_distance(30000142, 30002187, &sys_map).unwrap().route.len());
+        assert_eq!(12, compute_distance(30000142.into(), 30002187.into(), &sys_map).unwrap().route.len());
         // 1DQ1-A -> Sakht
-        assert_eq!(12, compute_distance(30004759, 30004299, &sys_map).unwrap().route.len());
+        assert_eq!(12, compute_distance(30004759.into(), 30004299.into(), &sys_map).unwrap().route.len());
 
         // Test randomly selected systems
-        let mut random_test_systems: HashMap<u64, u64> = HashMap::new();
+        let mut random_test_systems: HashMap<SystemId, SystemId> = HashMap::new();
         for _ in 0..2000 {
             let i1 = rng.gen_range(0..systems.len());
             let i2 = rng.gen_range(0..systems.len());
@@ -374,7 +354,7 @@ mod tests {
         eprintln!("Route computations finished in {} seconds", time);
     }
 
-    fn find_route_unoptimized(start_id: u64, end_id: u64, sys_map: &SystemMap) -> Option<Route> {
+    fn find_route_unoptimized(start_id: SystemId, end_id: SystemId, sys_map: &SystemMap) -> Option<Route> {
         let start_str = sys_map.systems.get(&start_id)
             .unwrap().name.as_str();
         let end_str = sys_map.systems.get(&end_id)
@@ -386,8 +366,8 @@ mod tests {
         if regex.captures(end_str).is_some() {
             return None;
         }
-        let mut visited: HashSet<u64> = HashSet::new();
-        let mut queue: Vec<Vec<u64>> = vec![vec![start_id]];
+        let mut visited: HashSet<SystemId> = HashSet::new();
+        let mut queue: Vec<Vec<SystemId>> = vec![vec![start_id]];
         while queue.len() > 0 {
             let route = queue.remove(0);
             let curr_id = *route.last().unwrap();
