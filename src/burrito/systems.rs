@@ -134,6 +134,17 @@ pub struct SystemMap {
     systems: HashMap<SystemId, System>,
 }
 
+impl SystemMap {
+
+    pub fn get_system_name(&self, id: &SystemId) -> Option<String> {
+        if let Some(system) = self.systems.get(id) {
+            return Some(system.name.to_owned());
+        }
+        None
+    }
+
+}
+
 fn load_saved_context(current_system: Option<String>) -> SystemContext {
     let mut path = setup_data_dir();
     const CTX_FILE: &str = "/ctx.json";
