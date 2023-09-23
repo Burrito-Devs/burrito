@@ -7,7 +7,7 @@ use serde_derive::{Serialize, Deserialize};
 
 use super::{systems::{SystemContext, SystemMap}, burrito_cfg::BurritoCfg, burrito_data::BurritoData, log_reader::LogReader, bloom_filter::BloomFilter};
 
-use enum_index::{EnumIndex, IndexEnum};
+use enum_index::EnumIndex;
 
 //const TIMESTAMP_REGEX: &str = r#"\[\s[0-9]{4}\.[0-9]{2}\.[0-9]{2}\s[0-9]{2}:[0-9]{2}:[0-9]{2}\s\]"#;
 const CHAT_LOG_REGEX: &str = r#"(?<ts>\[ [0-9]{4}\.[0-9]{2}\.[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} \]) (?<sender>.{1,}) > (?<content>.{1,})"#;
@@ -87,7 +87,7 @@ impl LogWatcher {
                         else {
                             self.recent_post_cache.insert(cache_key, event_time.timestamp_millis());
                         }
-                        let d = self.ctx.process_message(content.to_owned(), &self.sys_map);
+                        let results = self.ctx.process_message(content.to_owned(), &self.sys_map);
                         match sender {
                             SYSTEM_MESSAGE_SENDER => {
                                 match content {
@@ -119,26 +119,29 @@ impl LogWatcher {
                                 }
                             }
                             _ => {
-                                let mut event_type = EventType::RangeOfSystem(d);
-                                let mut message = format!("Hostiles {} jumps away!", d);
-                                let content_lower = content.to_lowercase().replace("?", "").replace(".", "");
-                                if content_lower.ends_with("status") || content_lower.ends_with("stat") {
-                                    event_type = EventType::SystemStatusRequest(d);
-                                    message = format!("Status request!");
-                                }
-                                if content_lower.ends_with("clr") || content_lower.ends_with("clear") {
-                                    event_type = EventType::SystemClear(d);
-                                    message = format!("System clear!");
-                                }
-                                events.push_chat_log_event(
-                                    LogEvent {
-                                        time: event_time,
-                                        character_name: reader.get_character_name(),
-                                        event_type: event_type,
-                                        trigger: line.to_owned(),
-                                        message: message
+                                if let Some(result) = results.iter().next() {
+                                    let d = result.0.get_route();
+                                    let mut event_type = EventType::RangeOfSystem(d);
+                                    let mut message = format!("Hostiles {} jumps away from {}!", d, "<TODO: my system>");
+                                    let content_lower = content.to_lowercase().replace("?", "").replace(".", "");
+                                    if content_lower.ends_with("status") || content_lower.ends_with("stat") {
+                                        event_type = EventType::SystemStatusRequest(d);
+                                        message = format!("Status request!");
                                     }
-                                )
+                                    if content_lower.ends_with("clr") || content_lower.ends_with("clear") {
+                                        event_type = EventType::SystemClear(d);
+                                        message = format!("System clear!");
+                                    }
+                                    events.push_chat_log_event(
+                                        LogEvent {
+                                            time: event_time,
+                                            character_name: reader.get_character_name(),
+                                            event_type: event_type,
+                                            trigger: line.to_owned(),
+                                            message: message
+                                        }
+                                    );
+                                }
                             }
                         }
                     }
