@@ -122,7 +122,7 @@ impl LogWatcher {
                                 if let Some(result) = results.iter().next() {
                                     let d = result.0.get_route();
                                     let mut event_type = EventType::RangeOfSystem(d);
-                                    let mut message = format!("Hostiles {} jumps away from {}!", d, "<TODO: my system>");
+                                    let mut message = format!("Hostiles {} jumps away from {}!", d, self.sys_map.get_system_name(result.1).unwrap());
                                     let content_lower = content.to_lowercase().replace("?", "").replace(".", "");
                                     if content_lower.ends_with("status") || content_lower.ends_with("stat") {
                                         event_type = EventType::SystemStatusRequest(d);
