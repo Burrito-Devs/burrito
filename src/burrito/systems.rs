@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque, BTreeMap};
 use std::io::Write;
 use std::{fs::File, io::BufReader};
 
@@ -19,21 +19,35 @@ pub struct SystemContext {
     /// cleared.
     version: u64,
     /// Current system for which to provide alerts
-    current_system: String,
+    #[serde(default)]
+    current_systems: HashSet<String>,
+    /// Current system IDs
+    #[serde(skip)]
+    current_system_ids: HashSet<SystemId>,
     /// Cache for computer paths between two systems
     ///
     /// The first time the path between systems is checked, the result will be
     /// cached. This avoids expensive pathfinding for systems that get reported
     /// often. It is likely that players are sticking to a single region, so the
     /// same systems will repeatedly be reported.
+    #[serde(default)]
     path_cache: PathCache,
 }
 
 // TODO: rewrite this entire thing. Cache entire system map and BFS to find route
 // Can optimize out cases such as Polaris or J[0-9]{1,}
 impl SystemContext {
-    pub fn new(current_system: Option<String>) -> Self {
-        load_saved_context(current_system)
+    pub fn new(sys_name: Option<String>, sys_map: &SystemMap) -> Self {
+        let mut ctx = load_saved_context(sys_name);
+        for system_name in &ctx.current_systems {
+            if let Some(id) = get_system_id(system_name, sys_map) {
+                ctx.current_system_ids.insert(id);
+            }
+            else {
+                eprintln!("Unrecognized system: {}", &system_name);
+            }
+        }
+        ctx
     }
 
     fn save(&self) {
@@ -51,56 +65,60 @@ impl SystemContext {
             .expect("Failed to write context to file");
     }
 
-    fn distance(&mut self, my_system: String, other_system: String, sys_map: &SystemMap) -> Distance {
-        let my_sys_id = get_system_id(my_system, sys_map);
-        let other_sys_id = get_system_id(other_system, sys_map);
-        if (my_sys_id == None) || (other_sys_id == None) {
-            return Distance::RouteFetchErr;
+    fn distances(&mut self, other_system: String, sys_map: &SystemMap) -> BTreeMap<Distance, SystemId> {
+        let mut results: BTreeMap<Distance, SystemId> = BTreeMap::new();
+        for my_sys_id in &self.current_system_ids {
+            let my_sys_id = my_sys_id.to_owned();
+            let other_sys_id = get_system_id(&other_system, sys_map);
+            if other_sys_id == None {
+                continue;
+            }
+            let other_sys_id = other_sys_id.unwrap();
+            let key = (my_sys_id, other_sys_id);
+            if let Some(path) = self.path_cache.search(&key) {
+                self.save();
+                results.insert(path, my_sys_id);
+            }
+            else {
+                let computed_distance = match compute_distance(my_sys_id, other_sys_id, sys_map) {
+                    Some(path) => Distance::Route { route: (path.route.len() - 1) as u32 },
+                    None => Distance::NoRoute,
+                };
+                self.path_cache.insert(key, computed_distance.clone());
+                self.save();
+                results.insert(computed_distance, my_sys_id);
+            }
         }
-        let key = (my_sys_id.unwrap(), other_sys_id.unwrap());
-        if let Some(path) = self.path_cache.search(&key) {
-            self.save();
-            path.to_owned()
-        }
-        else {
-            let computed_distance = match compute_distance(my_sys_id.unwrap().into(), other_sys_id.unwrap().into(), sys_map) {
-                Some(path) => Distance::Route { route: (path.route.len() - 1) as u32 },
-                None => Distance::NoRoute,
-            };
-            self.path_cache.insert(key, computed_distance.clone());
-            self.save();
-            return computed_distance;
-        }
+        results
     }
 
-    pub fn process_message(&mut self, message: String, sys_map: &SystemMap) -> u32 {
+    pub fn process_message(&mut self, message: String, sys_map: &SystemMap) -> BTreeMap<Distance, SystemId> {
         for word in message.split(" ") {
             let word = word.to_owned().replace("*", "");
             if word.len() <= 2 {
                 continue;
             }
-            if let Some(_) = get_system_id(word.to_owned(), sys_map) {
-                return self.distance(
-                    self.current_system.to_owned(),
+            if let Some(_) = get_system_id(&word, sys_map) {
+                return self.distances(
                     word.to_owned(),
                     sys_map
-                ).get_route();
+                );
             }
         }
-        u32::MAX
+        BTreeMap::new()
     }
 
-    pub fn get_current_system(&self) -> &str {
-        &self.current_system
+    pub fn get_current_systems(&self) -> &HashSet<String> {
+        &self.current_systems
     }
 
-    pub fn set_current_system(&mut self, current_system: &str) {
-        self.current_system = current_system.to_owned();
+    pub fn get_current_system_ids(&self) -> &HashSet<SystemId> {
+        &self.current_system_ids
     }
 
 }
 
-fn get_system_id(sys_name: String, sys_map: &SystemMap) -> Option<SystemId> {
+fn get_system_id(sys_name: &str, sys_map: &SystemMap) -> Option<SystemId> {
     if let Some(entry) =
         sys_map.systems.iter()
         .find(|sys| sys.1.name == sys_name) {
@@ -133,8 +151,8 @@ fn load_saved_context(current_system: Option<String>) -> SystemContext {
         ctx = serde_json::from_reader(reader)
             .expect("Failed to deserialize saved context");
     }
-    if current_system.is_some() {
-        ctx.current_system = current_system.unwrap();
+    if let Some(sys) = current_system {
+        ctx.current_systems.insert(sys);
     }
     ctx.save();
     ctx
@@ -297,7 +315,7 @@ pub enum Distance {
 }
 
 impl Distance {
-    fn get_route(&self) -> u32 {
+    pub fn get_route(&self) -> u32 {
         match self {
             Distance::NoRoute => u32::MAX,
             Distance::RouteFetchErr => u32::MAX - 1,

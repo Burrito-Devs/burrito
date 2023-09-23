@@ -1,10 +1,13 @@
 use std::{collections::HashMap, time::SystemTime, fs::DirEntry};
 
 use chrono::{DateTime, Utc};
+use enum_index_derive::{EnumIndex, IndexEnum};
 use regex::Regex;
 use serde_derive::{Serialize, Deserialize};
 
 use super::{systems::{SystemContext, SystemMap}, burrito_cfg::BurritoCfg, burrito_data::BurritoData, log_reader::LogReader, bloom_filter::BloomFilter};
+
+use enum_index::EnumIndex;
 
 //const TIMESTAMP_REGEX: &str = r#"\[\s[0-9]{4}\.[0-9]{2}\.[0-9]{2}\s[0-9]{2}:[0-9]{2}:[0-9]{2}\s\]"#;
 const CHAT_LOG_REGEX: &str = r#"(?<ts>\[ [0-9]{4}\.[0-9]{2}\.[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} \]) (?<sender>.{1,}) > (?<content>.{1,})"#;
@@ -84,7 +87,7 @@ impl LogWatcher {
                         else {
                             self.recent_post_cache.insert(cache_key, event_time.timestamp_millis());
                         }
-                        let d = self.ctx.process_message(content.to_owned(), &self.sys_map);
+                        let results = self.ctx.process_message(content.to_owned(), &self.sys_map);
                         match sender {
                             SYSTEM_MESSAGE_SENDER => {
                                 match content {
@@ -116,26 +119,29 @@ impl LogWatcher {
                                 }
                             }
                             _ => {
-                                let mut event_type = EventType::RangeOfSystem(d);
-                                let mut message = format!("Hostiles {} jumps away!", d);
-                                let content_lower = content.to_lowercase().replace("?", "").replace(".", "");
-                                if content_lower.ends_with("status") || content_lower.ends_with("stat") {
-                                    event_type = EventType::SystemStatusRequest(d);
-                                    message = format!("Status request!");
-                                }
-                                if content_lower.ends_with("clr") || content_lower.ends_with("clear") {
-                                    event_type = EventType::SystemClear(d);
-                                    message = format!("System clear!");
-                                }
-                                events.push_chat_log_event(
-                                    LogEvent {
-                                        time: event_time,
-                                        character_name: reader.get_character_name(),
-                                        event_type: event_type,
-                                        trigger: line.to_owned(),
-                                        message: message
+                                if let Some(result) = results.iter().next() {
+                                    let d = result.0.get_route();
+                                    let mut event_type = EventType::RangeOfSystem(d);
+                                    let mut message = format!("Hostiles {} jumps away from {}!", d, "<TODO: my system>");
+                                    let content_lower = content.to_lowercase().replace("?", "").replace(".", "");
+                                    if content_lower.ends_with("status") || content_lower.ends_with("stat") {
+                                        event_type = EventType::SystemStatusRequest(d);
+                                        message = format!("Status request!");
                                     }
-                                )
+                                    if content_lower.ends_with("clr") || content_lower.ends_with("clear") {
+                                        event_type = EventType::SystemClear(d);
+                                        message = format!("System clear!");
+                                    }
+                                    events.push_chat_log_event(
+                                        LogEvent {
+                                            time: event_time,
+                                            character_name: reader.get_character_name(),
+                                            event_type: event_type,
+                                            trigger: line.to_owned(),
+                                            message: message
+                                        }
+                                    );
+                                }
                             }
                         }
                     }
@@ -312,7 +318,7 @@ fn get_modified_ago(dir_entry: &DirEntry) -> u64 {
     return u64::MAX;
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, EnumIndex, IndexEnum, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum EventType {
     RangeOfSystem(u32),
     RangeOfCharacter(u32),
@@ -325,6 +331,49 @@ pub enum EventType {
     SystemChangedMessage,
     ChatConnectionLost,
     ChatConnectionRestored,
+}
+
+use std::cmp::Ordering;
+impl Ord for EventType {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match self {
+            EventType::RangeOfSystem(x) => {
+                match other {
+                    EventType::RangeOfCharacter(y) | EventType::RangeOfSystem(y) if x != y => {
+                        x.cmp(y)
+                    }
+                    _ => self.enum_index().cmp(&other.enum_index())
+                }
+            }
+            EventType::RangeOfCharacter(x) => {
+                match other {
+                    EventType::RangeOfSystem(y) | EventType::RangeOfCharacter(y) if x != y => {
+                        x.cmp(y)
+                    }
+                    _ => self.enum_index().cmp(&other.enum_index())
+                }
+            }
+            EventType::SystemClear(x) => {
+                match other {
+                    EventType::SystemClear(y) => x.cmp(y),
+                    _ => self.enum_index().cmp(&other.enum_index()),
+                }
+            }
+            EventType::SystemStatusRequest(x) => {
+                match other {
+                    EventType::SystemStatusRequest(y) => x.cmp(y),
+                    _ => self.enum_index().cmp(&other.enum_index()),
+                }
+            }
+            _ => self.enum_index().cmp(&other.enum_index())
+        }
+    }
+}
+
+impl PartialOrd for EventType {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 #[derive(Clone, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
@@ -436,4 +485,21 @@ impl IntelChannel {
             Self::Custom { channel } => channel.to_owned(),
         }
     }
+}
+
+mod test {
+
+    use crate::burrito::log_watcher::EventType;
+
+    #[test]
+    fn test_log_event_ord() {
+        assert!(EventType::FactionSpawn < EventType::OfficerSpawn);
+        assert!(EventType::SystemChangedMessage == EventType::SystemChangedMessage);
+        assert!(EventType::RangeOfSystem(1) < EventType::RangeOfCharacter(1));
+        assert!(EventType::RangeOfSystem(5) < EventType::RangeOfSystem(6));
+        assert!(EventType::RangeOfSystem(4) > EventType::RangeOfCharacter(0));
+        assert!(EventType::SystemClear(69) < EventType::SystemClear(420));
+        assert!(EventType::SystemStatusRequest(322) < EventType::SystemStatusRequest(9001));
+    }
+
 }
