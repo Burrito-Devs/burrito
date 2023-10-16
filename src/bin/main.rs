@@ -37,7 +37,7 @@ fn run_burrito(ctx: SystemContext, cfg: BurritoCfg, data: BurritoData, sys_map: 
         log_watcher.get_events().into_iter().for_each(|event| {
             match event.event_type {
                 EventType::ChatlogMessage => {
-                    println!("{}", &event.message);
+                    println!("{}", &event.trigger);
                 },
                 EventType::RangeOfSystem(event_distance) => {
                     println!("{}", &event.trigger);
