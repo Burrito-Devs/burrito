@@ -17,6 +17,7 @@ pub struct SystemContext {
     ///
     /// A version bump signals map changes and signals that cached paths should be
     /// cleared.
+    #[serde(default)]
     version: u64,
     /// Current system for which to provide alerts
     #[serde(default)]
@@ -24,6 +25,9 @@ pub struct SystemContext {
     /// Current system IDs
     #[serde(skip)]
     current_system_ids: HashSet<SystemId>,
+    /// Current characters to watch
+    #[serde(default)]
+    current_characters: HashSet<String>,
     /// Cache for computer paths between two systems
     ///
     /// The first time the path between systems is checked, the result will be
@@ -34,8 +38,6 @@ pub struct SystemContext {
     path_cache: PathCache,
 }
 
-// TODO: rewrite this entire thing. Cache entire system map and BFS to find route
-// Can optimize out cases such as Polaris or J[0-9]{1,}
 impl SystemContext {
     pub fn new(sys_name: Option<String>, sys_map: &SystemMap) -> Self {
         let mut ctx = load_saved_context(sys_name);
@@ -114,6 +116,10 @@ impl SystemContext {
 
     pub fn get_current_system_ids(&self) -> &HashSet<SystemId> {
         &self.current_system_ids
+    }
+
+    pub fn get_current_characters(&self) -> &HashSet<String> {
+        &self.current_characters
     }
 
 }

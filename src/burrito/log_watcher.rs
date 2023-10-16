@@ -119,29 +119,33 @@ impl LogWatcher {
                                 }
                             }
                             _ => {
+                                let mut event_type = EventType::ChatlogMessage;
+                                let mut message = content.to_owned();
                                 if let Some(result) = results.iter().next() {
                                     let d = result.0.get_route();
-                                    let mut event_type = EventType::RangeOfSystem(d);
-                                    let mut message = format!("Hostiles {} jumps away from {}!", d, self.sys_map.get_system_name(result.1).unwrap());
                                     let content_lower = content.to_lowercase().replace("?", "").replace(".", "");
-                                    if content_lower.ends_with("status") || content_lower.ends_with("stat") {
-                                        event_type = EventType::SystemStatusRequest(d);
-                                        message = format!("Status request!");
-                                    }
                                     if content_lower.ends_with("clr") || content_lower.ends_with("clear") {
                                         event_type = EventType::SystemClear(d);
                                         message = format!("System clear!");
                                     }
-                                    events.push_chat_log_event(
-                                        LogEvent {
-                                            time: event_time,
-                                            character_name: reader.get_character_name(),
-                                            event_type: event_type,
-                                            trigger: line.to_owned(),
-                                            message: message
-                                        }
-                                    );
+                                    else if content_lower.ends_with("status") || content_lower.ends_with("stat") {
+                                        event_type = EventType::SystemStatusRequest(d);
+                                        message = format!("Status request!");
+                                    }
+                                    else {
+                                        event_type = EventType::RangeOfSystem(d);
+                                        message = format!("Hostiles {} jumps away from {}!", d, self.sys_map.get_system_name(result.1).unwrap());
+                                    }
                                 }
+                                events.push_chat_log_event(
+                                    LogEvent {
+                                        time: event_time,
+                                        character_name: reader.get_character_name(),
+                                        event_type: event_type,
+                                        trigger: line.to_owned(),
+                                        message: message,
+                                    }
+                                );
                             }
                         }
                     }
@@ -324,6 +328,8 @@ pub enum EventType {
     RangeOfCharacter(u32),
     SystemClear(u32),
     SystemStatusRequest(u32),
+    ChatlogMessage,
+    GamelogMessage,
     FactionSpawn,
     DreadSpawn,
     TitanSpawn,

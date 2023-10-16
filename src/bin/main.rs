@@ -35,9 +35,12 @@ fn run_burrito(ctx: SystemContext, cfg: BurritoCfg, data: BurritoData, sys_map: 
     eprintln!("Burrito ready!");
     loop {
         log_watcher.get_events().into_iter().for_each(|event| {
-            println!("{}", &event.trigger);
             match event.event_type {
+                EventType::ChatlogMessage => {
+                    println!("{}", &event.message);
+                },
                 EventType::RangeOfSystem(event_distance) => {
+                    println!("{}", &event.trigger);
                     for alert in &cfg.sound_config.audio_alerts {
                         if let EventType::RangeOfSystem(alert_distance) = alert.trigger {
                             if event_distance <= alert_distance {
