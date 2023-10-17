@@ -372,6 +372,12 @@ mod tests {
         // 1DQ1-A -> Sakht
         assert_eq!(12, compute_distance(30004759.into(), 30004299.into(), &sys_map).unwrap().route.len());
 
+        // Turnur -> Zarzakh
+        assert_eq!(2, compute_distance(30002086.into(), 30100000.into(), &sys_map).unwrap().route.len());
+
+        // 1DQ1-A -> Turnur (through Zarzakh)
+        assert_eq!(34, compute_distance(30004759.into(), 30002086.into(), &sys_map).unwrap().route.len());
+
         // Test randomly selected systems
         let mut random_test_systems: HashMap<SystemId, SystemId> = HashMap::new();
         for _ in 0..2000 {

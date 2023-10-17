@@ -495,10 +495,10 @@ impl IntelChannel {
 
 mod test {
 
-    use crate::burrito::log_watcher::EventType;
-
-    #[test]
+   #[test]
     fn test_log_event_ord() {
+        use crate::burrito::log_watcher::EventType;
+        
         assert!(EventType::FactionSpawn < EventType::OfficerSpawn);
         assert!(EventType::SystemChangedMessage == EventType::SystemChangedMessage);
         assert!(EventType::RangeOfSystem(1) < EventType::RangeOfCharacter(1));
