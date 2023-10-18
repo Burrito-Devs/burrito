@@ -39,8 +39,8 @@ pub struct SystemContext {
 }
 
 impl SystemContext {
-    pub fn new(sys_name: Option<String>, sys_map: &SystemMap) -> Self {
-        let mut ctx = load_saved_context(sys_name);
+    pub fn new(sys_map: &SystemMap) -> Self {
+        let mut ctx = load_saved_context();
         for system_name in &ctx.current_systems {
             if let Some(id) = get_system_id(system_name, sys_map) {
                 ctx.current_system_ids.insert(id);
@@ -122,9 +122,29 @@ impl SystemContext {
         &self.current_characters
     }
 
+    pub fn watch_system(&mut self, system_name: &str) {
+        self.current_systems.insert(system_name.to_owned());
+        self.save();
+    }
+
+    pub fn unwatch_system(&mut self, system_name: &str) {
+        self.current_systems.remove(system_name);
+        self.save();
+    }
+
+    pub fn watch_character(&mut self, character_name: &str) {
+        self.current_characters.insert(character_name.to_owned());
+        self.save();
+    }
+
+    pub fn unwatch_character(&mut self, character_name: &str) {
+        self.current_characters.remove(character_name);
+        self.save();
+    }
+
 }
 
-fn get_system_id(sys_name: &str, sys_map: &SystemMap) -> Option<SystemId> {
+pub fn get_system_id(sys_name: &str, sys_map: &SystemMap) -> Option<SystemId> {
     if let Some(entry) =
         sys_map.systems.iter()
         .find(|sys| sys.1.name == sys_name) {
@@ -151,7 +171,7 @@ impl SystemMap {
 
 }
 
-fn load_saved_context(current_system: Option<String>) -> SystemContext {
+fn load_saved_context() -> SystemContext {
     let mut path = setup_data_dir();
     const CTX_FILE: &str = "/ctx.json";
     let path_cache = Default::default();
@@ -167,9 +187,6 @@ fn load_saved_context(current_system: Option<String>) -> SystemContext {
         let reader = BufReader::new(f);
         ctx = serde_json::from_reader(reader)
             .expect("Failed to deserialize saved context");
-    }
-    if let Some(sys) = current_system {
-        ctx.current_systems.insert(sys);
     }
     ctx.save();
     ctx
