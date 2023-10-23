@@ -169,6 +169,10 @@ impl SystemMap {
         None
     }
 
+    pub fn get_systems(&self) -> &HashMap<SystemId, System> {
+        &self.systems
+    }
+
 }
 
 fn load_saved_context() -> SystemContext {

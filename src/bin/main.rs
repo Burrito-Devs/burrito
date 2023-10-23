@@ -90,7 +90,7 @@ fn cli_cfg(args: Vec<String>, _cfg: &mut BurritoCfg, ctx: &mut SystemContext, sy
     let cmd = args[0].as_str();
     match cmd {
         "watch" | "unwatch" => {
-            guard_arg_len(2, args.len(), format!("{cmd} requires either `system` or `character`"));
+            guard_arg_len(2, args.len(), format!("{cmd} requires `system`, `character`, or `list`"));
             let watch_type = args[1].as_str();
             match watch_type {
                 "system" | "character" => {
@@ -121,9 +121,21 @@ fn cli_cfg(args: Vec<String>, _cfg: &mut BurritoCfg, ctx: &mut SystemContext, sy
                             }
                             println!("Removed {name} from {watch_type} watch list");
                         },
-                        _ => {
-                            panic!("Unreachable code");
-                        }
+                        _ => panic!("Unreachable code"),
+                    }
+                },
+                "list" => {
+                    match cmd {
+                        "watch" => println!("Unwatched systems: {:?}", ctx.get_current_systems()),
+                        "unwatch" => {
+                            let unwatched_systems: Vec<String> = sys_map.get_systems()
+                                .into_iter()
+                                .map(|e| e.1.name.to_owned())
+                                .filter(|name| !ctx.get_current_systems().contains(name))
+                                .collect();
+                            println!("Not watching the following systems: {:?}", unwatched_systems);
+                        },
+                        _ => panic!("Unreachable code"),
                     }
                 },
                 _ => {
