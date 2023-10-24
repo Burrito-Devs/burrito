@@ -25,6 +25,7 @@ pub struct LogWatcher {
     old_log_hashes: BloomFilter,
     recent_post_cache: HashMap<(String, String), i64>,
     sys_map: SystemMap,// TODO: should be &SystemMap
+    log_events: LogEventQueue,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
@@ -43,6 +44,7 @@ impl LogWatcher {
         data: BurritoData,
         sys_map: SystemMap,
     ) -> Self {
+        let game_log_alert_cd_ms = cfg.game_log_alert_cd_ms;
         Self {
             ctx,
             cfg,
@@ -51,6 +53,7 @@ impl LogWatcher {
             old_log_hashes: BloomFilter::new(),
             recent_post_cache: HashMap::new(),
             sys_map,
+            log_events: LogEventQueue { log_event_cd_ms: game_log_alert_cd_ms, last_log_event_ms: 0, log_events: vec![] },
         }
     }
 
@@ -62,7 +65,6 @@ impl LogWatcher {
     pub fn get_events(&mut self) -> Vec<LogEvent> {// TODO: Fix game log cooldown logic
         let new_log_readers = self.update_log_readers();
         self.log_readers.extend(new_log_readers);
-        let mut events = LogEventQueue::new(self.cfg.game_log_alert_cd_ms);
         let event_time = chrono::offset::Utc::now();
         self.update_recent_post_cache(event_time.timestamp_millis());
         for reader in &mut self.log_readers {
@@ -92,7 +94,7 @@ impl LogWatcher {
                             SYSTEM_MESSAGE_SENDER => {
                                 match content {
                                     CHAT_CONNECTION_LOST_MESSAGE => {
-                                        events.push_chat_log_event(
+                                        self.log_events.push_chat_log_event(
                                             LogEvent {
                                                 time: event_time,
                                                 character_name: reader.get_character_name(),
@@ -103,7 +105,7 @@ impl LogWatcher {
                                         );
                                     }
                                     CHAT_CONNECTION_RESTORED_MESSAGE => {
-                                        events.push_chat_log_event(
+                                        self.log_events.push_chat_log_event(
                                             LogEvent {
                                                 time: event_time,
                                                 character_name: reader.get_character_name(),
@@ -137,7 +139,7 @@ impl LogWatcher {
                                         message = format!("Hostiles {} jumps away from {}!", d, self.sys_map.get_system_name(result.1).unwrap());
                                     }
                                 }
-                                events.push_chat_log_event(
+                                self.log_events.push_chat_log_event(
                                     LogEvent {
                                         time: event_time,
                                         character_name: reader.get_character_name(),
@@ -158,7 +160,7 @@ impl LogWatcher {
                         if msg_type.to_lowercase() == "combat" {// TODO: rewrite as match for other cases
                             for officer_name in self.data.officer_npc_alerts.to_owned() {
                                 if content.contains(&officer_name) {
-                                    events.push_game_log_event(
+                                    self.log_events.push_game_log_event(
                                         LogEvent {
                                             time: event_time,
                                             character_name: reader.get_character_name(),
@@ -171,7 +173,7 @@ impl LogWatcher {
                             }
                             for special_name in self.data.special_npc_alerts.to_owned() {
                                 if content.contains(&special_name) {
-                                    events.push_game_log_event(
+                                    self.log_events.push_game_log_event(
                                         LogEvent {
                                             time: event_time,
                                             character_name: reader.get_character_name(),
@@ -184,7 +186,7 @@ impl LogWatcher {
                             }
                             for faction_string in self.data.faction_npc_alerts.to_owned() {
                                 if content.contains(&faction_string) {
-                                    events.push_game_log_event(
+                                    self.log_events.push_game_log_event(
                                         LogEvent {
                                             time: event_time,
                                             character_name: reader.get_character_name(),
@@ -200,7 +202,9 @@ impl LogWatcher {
                 }
             }
         }
-        events.get_log_events().into_iter().cloned().collect()
+        let new_events = self.log_events.get_log_events().to_owned();
+        self.log_events.log_events.clear();
+        new_events
     }
 
     fn update_recent_post_cache(&mut self, current_time_ms: i64) {
@@ -350,7 +354,7 @@ impl Ord for EventType {
                     }
                     _ => self.enum_index().cmp(&other.enum_index())
                 }
-            }
+            },
             EventType::RangeOfCharacter(x) => {
                 match other {
                     EventType::RangeOfSystem(y) | EventType::RangeOfCharacter(y) if x != y => {
@@ -358,20 +362,20 @@ impl Ord for EventType {
                     }
                     _ => self.enum_index().cmp(&other.enum_index())
                 }
-            }
+            },
             EventType::SystemClear(x) => {
                 match other {
                     EventType::SystemClear(y) => x.cmp(y),
                     _ => self.enum_index().cmp(&other.enum_index()),
                 }
-            }
+            },
             EventType::SystemStatusRequest(x) => {
                 match other {
                     EventType::SystemStatusRequest(y) => x.cmp(y),
                     _ => self.enum_index().cmp(&other.enum_index()),
                 }
-            }
-            _ => self.enum_index().cmp(&other.enum_index())
+            },
+            _ => self.enum_index().cmp(&other.enum_index()),
         }
     }
 }
