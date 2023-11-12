@@ -69,7 +69,7 @@ impl LogWatcher {
         let event_time = chrono::offset::Utc::now();
         self.update_recent_post_cache(event_time.timestamp_millis());
         for reader in &mut self.log_readers {
-            let result = reader.read_to_end();
+            let result = reader.read_new_lines();
             for line in result.lines {
                 // TODO: eve time is out of sync with Rust time by like half a minute
                 /*let ts_regex = Regex::new(TIMESTAMP_REGEX).unwrap();
@@ -239,7 +239,7 @@ impl LogWatcher {
                     file_path.push_str(&filename);
                     let mut game_log_reader =
                         LogReader::new_gamelog_reader(&file_path);
-                    _ = game_log_reader.read_to_end();
+                    _ = game_log_reader.read_new_lines();
                     readers.push(game_log_reader);
                 }
             }
@@ -258,7 +258,7 @@ impl LogWatcher {
                         file_path.push_str(&filename);
                         let mut chat_log_reader =
                             LogReader::new_chatlog_reader(&file_path);
-                        _ = chat_log_reader.read_to_end();
+                        _ = chat_log_reader.read_new_lines();
                         readers.push(chat_log_reader);
                     }
                 }
@@ -283,7 +283,7 @@ impl LogWatcher {
                     file_path.push_str(&filename);
                     let mut game_log_reader =
                         LogReader::new_gamelog_reader(&file_path);
-                    _ = game_log_reader.read_to_end();
+                    _ = game_log_reader.read_new_lines();
                     self.log_readers.push(game_log_reader);
                 }
             }
@@ -301,7 +301,7 @@ impl LogWatcher {
                         file_path.push_str(&filename);
                         let mut chat_log_reader =
                             LogReader::new_chatlog_reader(&file_path);
-                        _ = chat_log_reader.read_to_end();
+                        _ = chat_log_reader.read_new_lines();
                         self.log_readers.push(chat_log_reader);
                     }
                 });
