@@ -62,7 +62,8 @@ impl LogWatcher {
         self.ignore_old_logs_and_watch_recent();
     }
 
-    pub fn get_events(&mut self) -> Vec<LogEvent> {// TODO: Fix game log cooldown logic
+    // TODO: test this case again [ 2023.11.12 12:08:18 ] Echuu Shan-jan > 7G-QIG status ?
+    pub fn get_events(&mut self) -> Vec<LogEvent> {
         let new_log_readers = self.update_log_readers();
         self.log_readers.extend(new_log_readers);
         let event_time = chrono::offset::Utc::now();
@@ -126,6 +127,7 @@ impl LogWatcher {
                                 if let Some(result) = results.iter().next() {
                                     let d = result.0.get_route();
                                     let content_lower = content.to_lowercase().replace("?", "").replace(".", "");
+                                    let content_lower = content_lower.trim();
                                     if content_lower.ends_with("clr") || content_lower.ends_with("clear") {
                                         event_type = EventType::SystemClear(d);
                                         message = format!("System clear!");
