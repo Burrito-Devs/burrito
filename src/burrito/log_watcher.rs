@@ -62,7 +62,6 @@ impl LogWatcher {
         self.ignore_old_logs_and_watch_recent();
     }
 
-    // TODO: test this case again [ 2023.11.12 12:08:18 ] Echuu Shan-jan > 7G-QIG status ?
     pub fn get_events(&mut self) -> Vec<LogEvent> {
         let new_log_readers = self.update_log_readers();
         self.log_readers.extend(new_log_readers);
