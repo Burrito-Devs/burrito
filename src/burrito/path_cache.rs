@@ -19,7 +19,7 @@ impl PathCache {
         let opposite_key = (key.1, key.0);
         let mut new_key = key.to_owned();
         // TODO: this is a little ugly and is a warning. Rewrite this a bit better and more readable
-        let mut new_entry:PathCacheEntry = Default::default();
+        let mut new_entry;
         if let Some(entry) = self.path_cache.get(&opposite_key) {
             // Old entry with opposite key exists. Update it
             new_key = opposite_key;

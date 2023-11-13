@@ -46,26 +46,16 @@ impl LogReader {
         log_reader
     }
 
-    pub fn read_to_end(&mut self) -> LogReadResult {
-        let mut lines: Vec<String> = vec![];
+    pub fn read_new_lines(&mut self) -> LogReadResult {
+        if self.character_name.len() == 0 || self.channel_name.len() == 0 {
+            extract_channel_info(self);
+        }
         let f = File::open(&self.log_file).expect(&format!("Failed to open {}", self.log_file));
         let mut reader = BufReader::new(f);
         _ = reader.seek(SeekFrom::Start(self.cursor as u64));
-        let mut buffer = vec![];
-        let read = reader.read_to_end(&mut buffer).unwrap();
-        if read > 0 {
-            let (data, _, _) = if self.is_chatlog_reader() {
-                UTF_16LE.decode(&buffer)
-            }
-            else {
-                UTF_8.decode(&buffer)
-            };
-            self.cursor += read;
-            for line in data.trim().split("\r\n") {
-                lines.push(line.to_string());
-            }
-        }
-        return LogReadResult { bytes_read: read, lines: lines };
+        let read_result = read_to_end(&mut reader, self.is_chatlog_reader);
+        self.cursor += read_result.bytes_read;
+        return read_result;
     }
 
     pub fn is_chatlog_reader(&self) -> bool {
@@ -82,11 +72,31 @@ impl LogReader {
 
 }
 
+fn read_to_end(buf_reader: &mut BufReader<File>, is_chatlog: bool) -> LogReadResult {
+    let mut lines: Vec<String> = vec![];
+    let mut buffer = vec![];
+    let read = buf_reader.read_to_end(&mut buffer).unwrap();
+    if read > 0 {
+        let (data, _, _) = if is_chatlog {
+            UTF_16LE.decode(&buffer)
+        }
+        else {
+            UTF_8.decode(&buffer)
+        };
+        for line in data.trim().split("\r\n") {
+            lines.push(line.to_string());
+        }
+    }
+    return LogReadResult { bytes_read: read, lines: lines };
+}
+
 fn extract_channel_info(log_reader: &mut LogReader) {
     let listener_regex = Regex::new(LISTENER_REGEX).unwrap();
     let channel_regex = Regex::new(CHANNEL_REGEX).unwrap();
-    let result = log_reader.read_to_end();
-    for line in result.lines {
+    let f = File::open(&log_reader.log_file).expect(&format!("Failed to open {}", log_reader.log_file));
+    let mut buf_reader = BufReader::new(f);
+    let read_result = read_to_end(&mut buf_reader, log_reader.is_chatlog_reader);
+    for line in read_result.lines {
         if let Some(cap) = listener_regex.captures(&line) {
             log_reader.character_name = cap["listener"].to_owned();
         }
