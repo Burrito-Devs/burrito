@@ -47,13 +47,22 @@ fn run_burrito(ctx: SystemContext, cfg: BurritoCfg, data: BurritoData, sys_map: 
         log_watcher.get_events().into_iter().for_each(|event| {
             match event.event_type {
                 EventType::ChatlogMessage => {
-                    println!("{}", &event.trigger);
+                    if !cfg.hide_chat_messages {
+                        println!("{}", &event.trigger);
+                    }
                 },
                 EventType::RangeOfSystem(event_distance) => {
-                    println!("{}", &event.trigger);
+                    // TODO: change how alerts are handled so that this doesn't need to be two conditions
+                    if !cfg.hide_out_of_range_events {
+                        println!("{}", &event.trigger);
+                    }
                     for alert in &cfg.sound_config.audio_alerts {
                         if let EventType::RangeOfSystem(alert_distance) = alert.trigger {
                             if event_distance <= alert_distance {
+                                // TODO: change how alerts are handled so that this doesn't need to be two conditions
+                                if cfg.hide_out_of_range_events {
+                                    println!("{}", &event.trigger);
+                                }
                                 alert::alert(&event, &event.trigger, &event.character_name, Some(&alert.sound_file));
                                 break;
                             }

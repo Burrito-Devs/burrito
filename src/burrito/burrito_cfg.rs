@@ -13,6 +13,10 @@ pub struct BurritoCfg {
     #[serde(default)]
     pub game_log_alert_cd_ms: u64,
     #[serde(default)]
+    pub hide_chat_messages: bool,
+    #[serde(default)]
+    pub hide_out_of_range_events: bool,
+    #[serde(default)]
     pub recent_post_cache_ttl_ms: i64,
     #[serde(default)]
     pub sound_config: AudioAlertConfig,
@@ -34,6 +38,8 @@ impl Default for BurritoCfg {
             log_dir: format!("{}/Documents/Eve/logs/", utils::get_home_dir()).to_owned(),
             log_update_interval_ms: 500,
             game_log_alert_cd_ms: 5000,
+            hide_chat_messages: false,
+            hide_out_of_range_events: false,
             recent_post_cache_ttl_ms: 30000,
             sound_config: Default::default(),
             text_channel_config: Default::default(),
