@@ -29,7 +29,7 @@ When an event is produced, it may be ignored, it may be logged, or it may play a
 * Extract it to a temp directory.
 * Run the `install` script.
 * Open a Command Prompt window
-* Run `burrito cfg watch <system_name>` where `<system_name>` should be replaced the exact system name you want to monitor (case-sensitive for now).
+* Run `burrito cfg watch system <system_name>` where `<system_name>` should be replaced the exact system name you want to monitor (case-sensitive for now).
 * Run `burrito`
 
 Burrito should now be running and both monitoring recent logs and waiting for logs from your Eve clients. To exit burrito, press Ctrl+C in the Command Prompt window.
