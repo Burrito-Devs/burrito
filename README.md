@@ -29,7 +29,7 @@ When an event is produced, it may be ignored, it may be logged, or it may play a
 * Extract it to a temp directory.
 * Run the `install` script.
 * Open a Command Prompt window
-* Run `burrito cfg watch <system_name>` where `<system_name>` should be replaced the exact system name you want to monitor (case-sensitive for now).
+* Run `burrito cfg watch system <system_name>` where `<system_name>` should be replaced the exact system name you want to monitor (case-sensitive for now).
 * Run `burrito`
 
 Burrito should now be running and both monitoring recent logs and waiting for logs from your Eve clients. To exit burrito, press Ctrl+C in the Command Prompt window.
@@ -40,7 +40,7 @@ Burrito should now be running and both monitoring recent logs and waiting for lo
 * Create a `.burrito` directory under your home directory
 * Extract the contents of the `data` folder into the new `.burrito` folder. Do not copy the `data` folder itself, just its contents
 * Extract the Burrito binary wherever you want to run it from. Either your home directory or any place that is already in your PATH is probably easiest
-* Run `burrito cfg watch <system_name>` where `<system_name>` should be replaced the exact system name you want to monitor.
+* Run `burrito cfg watch system <system_name>` where `<system_name>` should be replaced the exact system name you want to monitor.
 * Run `burrito`
 
 ### Running Burrito
