@@ -186,7 +186,7 @@ fn print_help() {
         Examples:
         `burrito`\t\t\tRuns burrito
         `burrito help`\t\t\tPrints this output
-        `burrito cfg watch 1DQ1-A`\tAdds 1DQ1-A to system watch list
-        `burrito cfg unwatch 1DQ1-A`\tRemoves 1DQ1-A from system watch list
+        `burrito cfg watch system 1DQ1-A`\tAdds 1DQ1-A to system watch list
+        `burrito cfg unwatch system 1DQ1-A`\tRemoves 1DQ1-A from system watch list
     ");
 }
