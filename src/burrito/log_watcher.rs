@@ -1,13 +1,10 @@
 use std::{collections::HashMap, time::SystemTime, fs::DirEntry};
 
-use chrono::{DateTime, Utc};
-use enum_index_derive::{EnumIndex, IndexEnum};
+use chrono::Utc;
 use regex::Regex;
 use serde_derive::{Serialize, Deserialize};
 
-use super::{systems::{SystemContext, SystemMap}, burrito_cfg::BurritoCfg, burrito_data::BurritoData, log_reader::LogReader, bloom_filter::BloomFilter};
-
-use enum_index::EnumIndex;
+use super::{systems::{SystemContext, SystemMap}, burrito_cfg::BurritoCfg, burrito_data::BurritoData, log_reader::LogReader, bloom_filter::BloomFilter, log_event::{LogEvent, EventType}};
 
 //const TIMESTAMP_REGEX: &str = r#"\[\s[0-9]{4}\.[0-9]{2}\.[0-9]{2}\s[0-9]{2}:[0-9]{2}:[0-9]{2}\s\]"#;
 const CHAT_LOG_REGEX: &str = r#"(?<ts>\[ [0-9]{4}\.[0-9]{2}\.[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} \]) (?<sender>.{1,}) > (?<content>.{1,})"#;
@@ -26,15 +23,6 @@ pub struct LogWatcher {
     recent_post_cache: HashMap<(String, String), i64>,
     sys_map: SystemMap,// TODO: should be &SystemMap
     log_events: LogEventQueue,
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct LogEvent {
-    pub time: DateTime<Utc>,
-    pub character_name: String,
-    pub event_type: EventType,
-    pub trigger: String,
-    pub message: String,
 }
 
 impl LogWatcher {
@@ -327,66 +315,6 @@ fn get_modified_ago(dir_entry: &DirEntry) -> u64 {
     return u64::MAX;
 }
 
-#[derive(Clone, Debug, EnumIndex, IndexEnum, Deserialize, Eq, Hash, PartialEq, Serialize)]
-pub enum EventType {
-    RangeOfSystem(u32),
-    RangeOfCharacter(u32),
-    SystemClear(u32),
-    SystemStatusRequest(u32),
-    ChatlogMessage,
-    GamelogMessage,
-    FactionSpawn,
-    DreadSpawn,
-    TitanSpawn,
-    OfficerSpawn,
-    SystemChangedMessage,
-    ChatConnectionLost,
-    ChatConnectionRestored,
-}
-
-use std::cmp::Ordering;
-impl Ord for EventType {
-    fn cmp(&self, other: &Self) -> Ordering {
-        match self {
-            EventType::RangeOfSystem(x) => {
-                match other {
-                    EventType::RangeOfCharacter(y) | EventType::RangeOfSystem(y) if x != y => {
-                        x.cmp(y)
-                    }
-                    _ => self.enum_index().cmp(&other.enum_index())
-                }
-            },
-            EventType::RangeOfCharacter(x) => {
-                match other {
-                    EventType::RangeOfSystem(y) | EventType::RangeOfCharacter(y) if x != y => {
-                        x.cmp(y)
-                    }
-                    _ => self.enum_index().cmp(&other.enum_index())
-                }
-            },
-            EventType::SystemClear(x) => {
-                match other {
-                    EventType::SystemClear(y) => x.cmp(y),
-                    _ => self.enum_index().cmp(&other.enum_index()),
-                }
-            },
-            EventType::SystemStatusRequest(x) => {
-                match other {
-                    EventType::SystemStatusRequest(y) => x.cmp(y),
-                    _ => self.enum_index().cmp(&other.enum_index()),
-                }
-            },
-            _ => self.enum_index().cmp(&other.enum_index()),
-        }
-    }
-}
-
-impl PartialOrd for EventType {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
 #[derive(Clone, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum MessageType {
     ChatMessage,
@@ -501,18 +429,4 @@ impl IntelChannel {
 }
 
 mod test {
-
-   #[test]
-    fn test_log_event_ord() {
-        use crate::burrito::log_watcher::EventType;
-        
-        assert!(EventType::FactionSpawn < EventType::OfficerSpawn);
-        assert!(EventType::SystemChangedMessage == EventType::SystemChangedMessage);
-        assert!(EventType::RangeOfSystem(1) < EventType::RangeOfCharacter(1));
-        assert!(EventType::RangeOfSystem(5) < EventType::RangeOfSystem(6));
-        assert!(EventType::RangeOfSystem(4) > EventType::RangeOfCharacter(0));
-        assert!(EventType::SystemClear(69) < EventType::SystemClear(420));
-        assert!(EventType::SystemStatusRequest(322) < EventType::SystemStatusRequest(9001));
-    }
-
 }

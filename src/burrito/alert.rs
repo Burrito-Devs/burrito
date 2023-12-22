@@ -2,7 +2,7 @@ use std::{io::{BufReader, Write}, fs::File, thread};
 use rodio::{Decoder, OutputStream, Sink};
 use termcolor::{StandardStream, ColorSpec, WriteColor};
 
-use super::log_watcher::{EventType, LogEvent};
+use super::log_event::{LogEvent, EventType};
 
 fn play_file(path: String) {// TODO: Remove panics
     thread::spawn(move || {
