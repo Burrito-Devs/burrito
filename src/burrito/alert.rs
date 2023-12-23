@@ -20,7 +20,7 @@ pub fn alert(event: &LogEvent, trigger: &str, character_or_system_name: &str, so
     let mut stdout = StandardStream::stdout(termcolor::ColorChoice::Auto);
     _ = stdout.set_color(&get_color_spec(&event_type));
     match event_type {
-        EventType::RangeOfSystem(_) => {
+        EventType::RangeOfSystem => {
             _ = write!(&mut stdout, "{}", event.message);
         },
         EventType::FactionSpawn | EventType::DreadSpawn | EventType::OfficerSpawn => {
@@ -39,7 +39,7 @@ pub fn alert(event: &LogEvent, trigger: &str, character_or_system_name: &str, so
 
 fn get_color_spec(event_type: &EventType) -> ColorSpec {
     match event_type {
-        EventType::RangeOfSystem(_) => {
+        EventType::RangeOfSystem => {
             ColorSpec::new()
                 .set_bg(None)
                 .set_fg(Some(termcolor::Color::Red))

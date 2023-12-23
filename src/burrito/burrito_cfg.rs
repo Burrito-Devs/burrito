@@ -95,6 +95,11 @@ pub struct AudioAlert {
     pub sound_file: String,
 }
 
+#[derive(Clone, Debug, Eq, Hash, Deserialize, Ord, PartialEq, PartialOrd, Serialize)]
+pub struct TextAlert {
+    pub trigger: EventType,
+}
+
 #[derive(Clone, Deserialize, Serialize)]
 pub struct TextChannelConfig {
     #[serde(default)]

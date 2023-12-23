@@ -15,12 +15,12 @@ pub struct LogEvent {
     pub message: String,
 }
 
-#[derive(Clone, Debug, EnumIndex, IndexEnum, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Copy, Debug, EnumIndex, IndexEnum, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum EventType {
-    RangeOfCharacter(u32),
-    RangeOfSystem(u32),
-    SystemClear(u32),
-    SystemStatusRequest(u32),
+    RangeOfCharacter,
+    RangeOfSystem,
+    SystemClear,
+    SystemStatusRequest,
     ChatlogMessage,
     GamelogMessage,
     FactionSpawn,
@@ -34,23 +34,28 @@ pub enum EventType {
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct LogEventMetadata {
-    metadata: HashMap<String, String>,
+    metadata: HashMap<String, (EventDataType, String)>,
 }
 
 impl LogEventMetadata {
     pub fn new() -> Self {
         return Default::default();
     }
-    pub fn get_string<K>(&self, key: K) -> Option<String>
-    where K: Borrow<str>,
-    {
-        return self.metadata.get(key.borrow()).cloned();
-    }
-    pub fn get_u8<K>(&self, key: K) -> Option<u8>
-    where K: Borrow<str>,
-    {
+    pub fn get_string<K: Borrow<str>>(&self, key: K) -> Option<String> {
         if let Some(value) = self.metadata.get(key.borrow()) {
-            return Some(value.parse::<u8>().expect("BUG! invalid value type"));
+            match value.0 {
+                EventDataType::String => return Some(value.1),
+                _ => panic!("BUG! Invalid value type"),
+            }
+        }
+        return None;
+    }
+    pub fn get_u8<K: Borrow<str>>(&self, key: K) -> Option<u8> {
+        if let Some(value) = self.metadata.get(key.borrow()) {
+            match value.0 {
+                EventDataType::U8 => return Some(value.1.parse::<u8>().expect("BUG! Invalid value type")),
+                _ => panic!("BUG! Invalid value type"),
+            }
         }
         return None;
     }
@@ -58,7 +63,10 @@ impl LogEventMetadata {
     where K: Borrow<str>,
     {
         if let Some(value) = self.metadata.get(key.borrow()) {
-            return Some(value.parse::<i8>().expect("BUG! invalid value type"));
+            match value.0 {
+                EventDataType::I8 => return Some(value.1.parse::<i8>().expect("BUG! Invalid value type")),
+                _ => panic!("BUG! Invalid value type")
+            }
         }
         return None;
     }
@@ -66,7 +74,10 @@ impl LogEventMetadata {
     where K: Borrow<str>,
     {
         if let Some(value) = self.metadata.get(key.borrow()) {
-            return Some(value.parse::<u16>().expect("BUG! invalid value type"));
+            match value.0 {
+                EventDataType::U16 => return Some(value.1.parse::<u16>().expect("BUG! Invalid value type")),
+                _ => panic!("BUG! Invalid value type"),
+            }
         }
         return None;
     }
@@ -74,7 +85,10 @@ impl LogEventMetadata {
     where K: Borrow<str>,
     {
         if let Some(value) = self.metadata.get(key.borrow()) {
-            return Some(value.parse::<i16>().expect("BUG! invalid value type"));
+            match value.0 {
+                EventDataType::I16 => return Some(value.1.parse::<i16>().expect("BUG! Invalid value type")),
+                _ => panic!("BUG! Invalid value type"),
+            }
         }
         return None;
     }
@@ -82,7 +96,10 @@ impl LogEventMetadata {
     where K: Borrow<str>,
     {
         if let Some(value) = self.metadata.get(key.borrow()) {
-            return Some(value.parse::<u32>().expect("BUG! invalid value type"));
+            match value.0 {
+                EventDataType::U32 => return Some(value.1.parse::<u32>().expect("BUG! Invalid value type")),
+                _ => panic!("BUG! Invalid value type"),
+            }
         }
         return None;
     }
@@ -90,7 +107,10 @@ impl LogEventMetadata {
     where K: Borrow<str>,
     {
         if let Some(value) = self.metadata.get(key.borrow()) {
-            return Some(value.parse::<i32>().expect("BUG! invalid value type"));
+            match value.0 {
+                EventDataType::I32 => return Some(value.1.parse::<i32>().expect("BUG! Invalid value type")),
+                _ => panic!("BUG! Invalid value type"),
+            }
         }
         return None;
     }
@@ -98,7 +118,10 @@ impl LogEventMetadata {
     where K: Borrow<str>,
     {
         if let Some(value) = self.metadata.get(key.borrow()) {
-            return Some(value.parse::<u64>().expect("BUG! invalid value type"));
+            match value.0 {
+                EventDataType::U64 => return Some(value.1.parse::<u64>().expect("BUG! Invalid value type")),
+                _ => panic!("BUG! Invalid value type"),
+            }
         }
         return None;
     }
@@ -106,7 +129,10 @@ impl LogEventMetadata {
     where K: Borrow<str>,
     {
         if let Some(value) = self.metadata.get(key.borrow()) {
-            return Some(value.parse::<i64>().expect("BUG! invalid value type"));
+            match value.0 {
+                EventDataType::I64 => return Some(value.1.parse::<i64>().expect("BUG! Invalid value type")),
+                _ => panic!("BUG! Invalid value type"),
+            }
         }
         return None;
     }
@@ -114,7 +140,10 @@ impl LogEventMetadata {
     where K: Borrow<str>,
     {
         if let Some(value) = self.metadata.get(key.borrow()) {
-            return Some(value.parse::<f32>().expect("BUG! invalid value type"));
+            match value.0 {
+                EventDataType::F32 => return Some(value.1.parse::<f32>().expect("BUG! Invalid value type")),
+                _ => panic!("BUG! Invalid value type"),
+            }
         }
         return None;
     }
@@ -122,23 +151,43 @@ impl LogEventMetadata {
     where K: Borrow<str>,
     {
         if let Some(value) = self.metadata.get(key.borrow()) {
-            return Some(value.parse::<f64>().expect("BUG! invalid value type"));
+            match value.0 {
+                EventDataType::F64 => return Some(value.1.parse::<f64>().expect("BUG! Invalid value type")),
+                _ => panic!("BUG! Invalid value type"),
+            }
         }
         return None;
     }
-    pub fn put(&mut self, key: impl ToString, value: impl ToString) {
-        self.metadata.insert(key.to_string(), value.to_string());
+    pub fn put(&mut self, key: impl ToString, value: impl ToString, value_type: EventDataType) {
+        self.metadata.insert(key.to_string(), (value_type, value.to_string()));
     }
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+pub enum EventDataType {
+    U8,
+    I8,
+    U16,
+    I16,
+    U32,
+    I32,
+    U64,
+    I64,
+    F32,
+    F64,
+    String,
 }
 
 mod test {
     #[test]
     fn test_test_test() {
-        let mut uut = crate::burrito::log_event::LogEventMetadata::new();
+        use crate::burrito::log_event::{EventDataType, LogEventMetadata};
+
+        let mut uut = LogEventMetadata::new();
         assert_eq!(None, uut.get_string("does not exist"));
-        uut.put("u32", 5u32);
-        uut.put("f64".to_string(), 0.25f64);
-        uut.put("String", "My String");
+        uut.put("u32", 5u32, EventDataType::U32);
+        uut.put("f64".to_string(), 0.25f64, EventDataType::F64);
+        uut.put("String", "My String", EventDataType::String);
         assert_eq!(None, uut.get_string("does not exist".to_string()));
         assert_eq!(Some(5u32), uut.get_u32("u32"));
         assert_eq!(Some(0.25f64), uut.get_f64("f64"));
