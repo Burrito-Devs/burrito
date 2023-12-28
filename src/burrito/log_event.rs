@@ -2,7 +2,6 @@ use std::{borrow::Borrow, str::FromStr};
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
-use enum_index_derive::{EnumIndex, IndexEnum};
 use serde_derive::{Deserialize, Serialize};
 
 
@@ -22,7 +21,7 @@ impl LogEvent {
     }
 }
 
-#[derive(Clone, Copy, Debug, EnumIndex, IndexEnum, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum EventType {
     RangeOfCharacter,
     RangeOfSystem,

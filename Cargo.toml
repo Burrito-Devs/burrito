@@ -12,8 +12,6 @@ path = "src/bin/main.rs"
 chrono = { version = "0.4.26", features = ["serde"] }
 encoding_rs = "0.8.32"
 encoding_rs_io = "0.1.7"
-enum_index = "0.2.0"
-enum_index_derive = "0.2.0"
 home = "0.5.3"
 regex = "1.9.1"
 rodio = "0.17.1"

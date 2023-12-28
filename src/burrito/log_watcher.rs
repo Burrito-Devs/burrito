@@ -238,7 +238,7 @@ impl LogWatcher {
             let filename = file.file_name();
             let filename = filename.to_str().unwrap();
             for channel in self.cfg.text_channel_config.text_channels.iter() {
-                if filename.starts_with(channel.get_channel().as_str()) && filename.ends_with(".txt") {
+                if filename.starts_with(channel.get_channel()) && filename.ends_with(".txt") {
                     if !self.old_log_hashes.probably_contains(&filename) {
                         self.old_log_hashes.insert(&filename);
                         let mut file_path = chat_log_dir.clone();
@@ -283,7 +283,7 @@ impl LogWatcher {
             let filename = filename.to_str().unwrap();
             if modified_in_last_day(&file) {
                 self.cfg.text_channel_config.text_channels.iter().for_each(|channel| {
-                    if filename.starts_with(&channel.get_channel()) && filename.ends_with(".txt") {
+                    if filename.starts_with(channel.get_channel()) && filename.ends_with(".txt") {
                         let mut file_path = chat_log_dir.clone();
                         file_path.push_str(&filename);
                         let mut chat_log_reader =
@@ -332,7 +332,7 @@ pub enum GameMessageType {// TODO: make more comprehensive list of these
     NeutOutgoing,
 }
 
-#[derive(Clone, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct LogEventQueue {
     log_event_cd_ms: u64,
     last_log_event_ms: u64,
@@ -395,35 +395,35 @@ pub enum IntelChannel {
 }
 
 impl IntelChannel {
-    fn get_channel(&self) -> String {
+    fn get_channel(&self) -> &str {
         match self {
-            IntelChannel::Aridia => "aridia.imperium".to_owned(),
-            IntelChannel::Branch => "brn.imperium".to_owned(),
-            IntelChannel::Catch => "catch.imperium".to_owned(),
-            IntelChannel::CloudRing => "cr.imperium".to_owned(),
-            IntelChannel::CobaltEdge => "ce.imperium".to_owned(),
-            IntelChannel::Curse => "curse.imperium".to_owned(),
-            IntelChannel::Deklein => "dek.imperium".to_owned(),
-            IntelChannel::Delve => "delve.imperium".to_owned(),
-            IntelChannel::Esoteria => "esoteria.imperium".to_owned(),
-            IntelChannel::Fade => "fade.imperium".to_owned(),
-            IntelChannel::Fountain => "ftn.imperium".to_owned(),
-            IntelChannel::Geminate => "gem.imperium".to_owned(),
-            IntelChannel::Khanid => "khanid.imperium".to_owned(),
-            IntelChannel::Lonetrek => "lone.imperium".to_owned(),
-            IntelChannel::ParagonSoul => "paragon.imperium".to_owned(),
-            IntelChannel::PeriodBasis => "period.imperium".to_owned(),
-            IntelChannel::Pochven => "triangle.imperium".to_owned(),
-            IntelChannel::Providence => "provi.imperium".to_owned(),
-            IntelChannel::PureBlind => "pb.imperium".to_owned(),
-            IntelChannel::Querious => "querious.imperium".to_owned(),
-            IntelChannel::Syndicate => "synd.imperium".to_owned(),
-            IntelChannel::Tenal => "tnl.imperium".to_owned(),
-            IntelChannel::Tribute => "tri.imperium".to_owned(),
-            IntelChannel::ValeOfTheSilent => "vale.imperium".to_owned(),
-            IntelChannel::Venal => "vnl.imperium".to_owned(),
-            IntelChannel::Gj => "gj.imperium".to_owned(),
-            Self::Custom { channel } => channel.to_owned(),
+            IntelChannel::Aridia => "aridia.imperium",
+            IntelChannel::Branch => "brn.imperium",
+            IntelChannel::Catch => "catch.imperium",
+            IntelChannel::CloudRing => "cr.imperium",
+            IntelChannel::CobaltEdge => "ce.imperium",
+            IntelChannel::Curse => "curse.imperium",
+            IntelChannel::Deklein => "dek.imperium",
+            IntelChannel::Delve => "delve.imperium",
+            IntelChannel::Esoteria => "esoteria.imperium",
+            IntelChannel::Fade => "fade.imperium",
+            IntelChannel::Fountain => "ftn.imperium",
+            IntelChannel::Geminate => "gem.imperium",
+            IntelChannel::Khanid => "khanid.imperium",
+            IntelChannel::Lonetrek => "lone.imperium",
+            IntelChannel::ParagonSoul => "paragon.imperium",
+            IntelChannel::PeriodBasis => "period.imperium",
+            IntelChannel::Pochven => "triangle.imperium",
+            IntelChannel::Providence => "provi.imperium",
+            IntelChannel::PureBlind => "pb.imperium",
+            IntelChannel::Querious => "querious.imperium",
+            IntelChannel::Syndicate => "synd.imperium",
+            IntelChannel::Tenal => "tnl.imperium",
+            IntelChannel::Tribute => "tri.imperium",
+            IntelChannel::ValeOfTheSilent => "vale.imperium",
+            IntelChannel::Venal => "vnl.imperium",
+            IntelChannel::Gj => "gj.imperium",
+            Self::Custom { channel } => channel.as_str(),
         }
     }
 }
