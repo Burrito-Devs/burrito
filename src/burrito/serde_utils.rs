@@ -1,9 +1,14 @@
-use std::{fs::File, io::{BufWriter, BufReader, Write}};
+use std::{fs::File, io::{BufWriter, BufReader, Write}, borrow::Borrow};
+
+use serde::{Deserialize, Serialize};
 
 use crate::burrito::utils;
 
-// TODO: Refactor bounds for T into a new trait
-pub fn read_or_create_default_data_struct<T: for<'a> serde::Deserialize<'a> + serde::Serialize + Default + Clone>(path: &str, filename: &str) -> T {
+pub trait JsonStruct: for<'a> Deserialize<'a> + Serialize + Default + Clone {}
+
+impl<T> JsonStruct for T where T: for<'a> Deserialize<'a> + Serialize + Default + Clone {}
+
+pub fn read_or_create_default_data_struct<T: JsonStruct>(path: &str, filename: &str) -> T {
     let mut path_builder = utils::get_burrito_dir();
     path_builder.push_str("/");
     path_builder.push_str(path);
@@ -37,4 +42,8 @@ pub fn read_or_create_default_data_struct<T: for<'a> serde::Deserialize<'a> + se
         ret_value = loaded_struct;
     }
     return ret_value;
+}
+
+pub fn parse_from_json<K: Borrow<str>, T: JsonStruct>(json: K) -> T {
+    serde_json::from_str(json.borrow()).unwrap()
 }

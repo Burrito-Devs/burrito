@@ -23,10 +23,10 @@ pub struct SystemContext {
     #[serde(default)]
     current_systems: HashSet<String>,
     /// Current system IDs
-    #[serde(skip)]
+    #[serde(skip)]// TODO: HERE!
     current_system_ids: HashSet<SystemId>,
     /// Current characters to watch
-    #[serde(default)]
+    #[serde(default)]// TODO: HERE!
     current_characters: HashSet<String>,
     /// Cache for computer paths between two systems
     ///

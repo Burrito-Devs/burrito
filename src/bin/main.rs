@@ -51,7 +51,8 @@ fn run_burrito(ctx: SystemContext, cfg: BurritoCfg, data: BurritoData, sys_map: 
                         println!("{}", &event.trigger);
                     }
                 },
-                EventType::RangeOfSystem(event_distance) => {
+                // TODO: HERE!
+                /*EventType::RangeOfSystem(event_distance) => {
                     // TODO: change how alerts are handled so that this doesn't need to be two conditions
                     if !cfg.hide_out_of_range_events {
                         println!("{}", &event.trigger);
@@ -68,7 +69,7 @@ fn run_burrito(ctx: SystemContext, cfg: BurritoCfg, data: BurritoData, sys_map: 
                             }
                         }
                     }
-                },
+                },*/
                 EventType::FactionSpawn => {
                     if let Some(audio_alert) = cfg.sound_config.audio_alerts.iter()
                         .find(|a| a.trigger == event.event_type) {

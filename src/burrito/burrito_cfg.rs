@@ -61,10 +61,10 @@ impl Default for AudioAlertConfig {
         let burrito_dir = utils::get_burrito_dir();
         let mut def_neutral_file = burrito_dir.clone();
         def_neutral_file.push_str("sounds/neut_in_range.mp3");
-        def.audio_alerts.insert(AudioAlert {
+        /*def.audio_alerts.insert(AudioAlert {// TODO: HERE!
             trigger: EventType::RangeOfSystem(5),
             sound_file: def_neutral_file,
-        });
+        });*/
         let mut def_faction_file = burrito_dir.clone();
         def_faction_file.push_str("sounds/faction_spawn.mp3");
         def.audio_alerts.insert(AudioAlert {

@@ -89,6 +89,7 @@ impl LogWatcher {
                                                 event_type: EventType::ChatConnectionLost,
                                                 trigger: line.to_owned(),
                                                 message: CHAT_CONNECTION_LOST_MESSAGE.to_owned(),
+                                                event_metadata: Default::default(),// TODO: HERE!
                                             }
                                         );
                                     }
@@ -100,6 +101,7 @@ impl LogWatcher {
                                                 event_type: EventType::ChatConnectionRestored,
                                                 trigger: line.to_owned(),
                                                 message: CHAT_CONNECTION_RESTORED_MESSAGE.to_owned(),
+                                                event_metadata: Default::default(),// TODO: HERE!
                                             }
                                         );
                                     }
@@ -116,15 +118,15 @@ impl LogWatcher {
                                     let content_lower = content.to_lowercase().replace("?", "").replace(".", "");
                                     let content_lower = content_lower.trim();
                                     if content_lower.ends_with("clr") || content_lower.ends_with("clear") {
-                                        event_type = EventType::SystemClear(d);
+                                        event_type = EventType::SystemClear;
                                         message = format!("System clear!");
                                     }
                                     else if content_lower.ends_with("status") || content_lower.ends_with("stat") {
-                                        event_type = EventType::SystemStatusRequest(d);
+                                        event_type = EventType::SystemStatusRequest;
                                         message = format!("Status request!");
                                     }
                                     else {
-                                        event_type = EventType::RangeOfSystem(d);
+                                        event_type = EventType::RangeOfSystem;
                                         message = format!("Hostiles {} jumps away from {}!", d, self.sys_map.get_system_name(result.1).unwrap());
                                     }
                                 }
@@ -135,6 +137,7 @@ impl LogWatcher {
                                         event_type: event_type,
                                         trigger: line.to_owned(),
                                         message: message,
+                                        event_metadata: Default::default(),// TODO: HERE!
                                     }
                                 );
                             }
@@ -156,6 +159,7 @@ impl LogWatcher {
                                             event_type: EventType::OfficerSpawn,
                                             trigger: line.to_owned(),
                                             message: format!("{} spawn!", officer_name).to_owned(),
+                                            event_metadata: Default::default(),// TODO: HERE!
                                         }
                                     );
                                 }
@@ -169,6 +173,7 @@ impl LogWatcher {
                                             event_type: EventType::DreadSpawn,
                                             trigger: line.to_owned(),
                                             message: format!("{} spawn!", special_name).to_owned(),
+                                            event_metadata: Default::default(),// TODO: HERE!
                                         }
                                     );
                                 }
@@ -182,6 +187,7 @@ impl LogWatcher {
                                             event_type: EventType::FactionSpawn,
                                             trigger: line.to_owned(),
                                             message: format!("{} spawn!", faction_string).to_owned(),
+                                            event_metadata: Default::default(),// TODO: HERE!
                                         }
                                     );
                                 }
