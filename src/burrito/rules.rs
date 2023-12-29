@@ -2,16 +2,73 @@ use std::cmp::Ordering;
 
 use serde_derive::{Deserialize, Serialize};
 
-use super::log_event::{LogEventMetadataField, LogEventMetadataType};
+use super::log_event::{LogEventMetadataField, LogEventMetadataType, EventType};
 
-pub trait Comparable: Eq + Ord + PartialEq + PartialOrd {}
-impl<T: Eq + Ord + PartialEq + PartialOrd> Comparable for T {}
+#[derive(Clone, Deserialize, Serialize)]
+pub struct RuleList {
+    rules: Vec<EventRule>,
+}
+
+impl RuleList {
+    pub fn get_rules(&self) -> &Vec<EventRule> {
+        &self.rules
+    }
+    pub fn rules(&self) -> impl Iterator<Item = &EventRule> {
+        self.rules.iter()
+    }
+}
+
+impl Default for RuleList {
+    fn default() -> Self {
+        Self { rules: Default::default() }// TODO: HERE! default rules
+    }
+}
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct EventRule {
+    event_type: EventType,
     metadata_tag: String,
     rule: ComparisonRule,
     ref_value: String,
+    actions: Vec<RuleAction>,
+}
+
+impl EventRule {
+    pub fn new(event_type: EventType, data_tag: impl ToString, rule: ComparisonRule, ref_value: impl ToString, actions: impl Iterator<Item = RuleAction>) -> Self {
+        EventRule {
+            event_type: event_type,
+            metadata_tag: data_tag.to_string(),
+            rule: rule,
+            ref_value: ref_value.to_string(),
+            actions: actions.collect(),
+        }
+    }
+    pub fn get_event_type(&self) -> EventType {
+        self.event_type
+    }
+    pub fn get_metadata_tag(&self) -> &String {
+        &self.metadata_tag
+    }
+    pub fn get_rule(&self) -> ComparisonRule {
+        self.rule
+    }
+    pub fn get_ref_value(&self) -> &String {
+        &self.ref_value
+    }
+    pub fn get_actions(&self) -> &Vec<RuleAction> {
+        &self.actions
+    }
+    pub fn actions(&self) -> impl Iterator<Item = &RuleAction> {
+        self.actions.iter()
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+pub enum RuleAction {
+    Echo,
+    TextOutput(String),
+    TextAlert(String),
+    AudioAlert(String),
 }
 
 pub fn compare(data_field1: LogEventMetadataField, data_field2: LogEventMetadataField, cmp_type: ComparisonRule) -> bool {

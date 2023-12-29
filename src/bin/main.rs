@@ -70,7 +70,8 @@ fn run_burrito(ctx: SystemContext, cfg: BurritoCfg, data: BurritoData, sys_map: 
                         }
                     }
                 },*/
-                EventType::FactionSpawn => {
+                // TODO: HERE!
+                /*EventType::FactionSpawn => {
                     if let Some(audio_alert) = cfg.sound_config.audio_alerts.iter()
                         .find(|a| a.trigger == event.event_type) {
                         alert::alert(&event, &event.trigger, &event.character_name, Some(&audio_alert.sound_file))
@@ -87,7 +88,7 @@ fn run_burrito(ctx: SystemContext, cfg: BurritoCfg, data: BurritoData, sys_map: 
                         .find(|a| a.trigger == event.event_type) {
                         alert::alert(&event, &event.trigger, &event.character_name, Some(&audio_alert.sound_file))
                     }
-                },
+                },*/
                 _ => {}// TODO: The rest of the events
             }
         });
