@@ -64,7 +64,7 @@ impl EventRule {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub enum RuleAction {
+pub enum RuleAction {// TODO: HERE!
     Echo,
     TextOutput(String),
     TextAlert(String),

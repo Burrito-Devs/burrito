@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use super::{burrito_cfg::BurritoCfg, log_event::EventType};
+use super::{burrito_cfg::BurritoCfg, log_event::{EventType, LogEvent}};
 
 
 pub struct EventFilter {
@@ -22,5 +22,10 @@ impl EventFilter {
     }
     pub fn event_types(&self) -> impl Iterator<Item = &EventType> {
         self.event_types.iter()
+    }
+    pub fn pass(&self, events: impl Iterator<Item = LogEvent>) {
+        events.filter(|e| self.event_types.contains(&e.event_type)).for_each(|event| {
+            //TODO: HERE!
+        });
     }
 }
