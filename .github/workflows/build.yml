@@ -18,8 +18,8 @@ jobs:
       matrix:
         runner-tags: [
             [self-hosted, macOS, X64],
-            [self-hosted, Linux],
-            [self-hosted, Windows],
+            [self-hosted, Linux, X64],
+            [self-hosted, Windows, X64],
           ]
         include:
           - runner-tags: [self-hosted, macOS, X64]
