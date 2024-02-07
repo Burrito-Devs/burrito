@@ -16,17 +16,9 @@ jobs:
       contents: write
     strategy:
       matrix:
-        runner-tags: [
-            [self-hosted, macOS, X64],
-            [self-hosted, Linux, X64],
-            [self-hosted, Windows, X64],
-          ]
+        runner-tags: [[self-hosted, macOS, X64]]
         include:
           - runner-tags: [self-hosted, macOS, X64]
-            container: ""
-          - runner-tags: [self-hosted, Linux, X64]
-            container: ""
-          - runner-tags: [self-hosted, Windows, X64]
             container: ""
 
     runs-on: ${{ matrix.runner-tags }}
@@ -52,29 +44,56 @@ jobs:
 
       - name: Cargo Build
         run: |
-          cargo build --release
+          make
 
       - name: Copy binaries to cache folder
         run: |
           mkdir -pv build_artifacts
-          cp target/release/burrito build_artifacts
+          cp target/x64_64-unknown-linux-gnu/release/burrito.zip build_artifacts
+          cp target/x64_64-pc-windows-gnu/release/burrito.zip build_artifacts/burrito-win64.zip
+          cp target/i686-pc-windows-gnu/release/burrito.zip build_artifacts/burrito-win32.zip
+          cp target/x64_64-apple-darwin/release/burrito.zip build_artifacts/burrito-mac64.zip
 
       - name: Create Artifact
         run: |
           mkdir -pv artifact
-          cd artifact && tar -czvf ${{ github.sha }}-${{ runner.os }}-${{ runner.arch }}.tar.gz -C ../build_artifacts/ .
+          cd artifact && tar -czvf ${{ github.sha }}.tar.gz -C ../build_artifacts/ burrito.zip
+          cd artifact && tar -czvf ${{ github.sha }}-win64.tar.gz -C ../build_artifacts/ burrito-win64.zip
+          cd artifact && tar -czvf ${{ github.sha }}-win32.tar.gz -C ../build_artifacts/ burrito-win32.zip
+          cd artifact && tar -czvf ${{ github.sha }}-mac64.tar.gz -C ../build_artifacts/ burrito-mac64.zip
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: burrito_${{ runner.os }}-${{ runner.arch }}
-          path: artifact/${{ github.sha }}-${{ runner.os }}-${{ runner.arch }}.tar.gz
+          name: burrito
+          path: artifact/${{ github.sha }}.tar.gz
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: burrito
+          path: artifact/${{ github.sha }}-win64.tar.gz
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: burrito
+          path: artifact/${{ github.sha }}-win32.tar.gz
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: burrito
+          path: artifact/${{ github.sha }}-mac64.tar.gz
 
       - name: Create Prerelease
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           mkdir -pv release
-          cd release && tar -czvf ${{ github.ref_name }}-${{ runner.os }}-${{ runner.arch }}.tar.gz -C ../build_artifacts/ .
+          cd release && tar -czvf ${{ github.ref_name }}.tar.gz -C ../build_artifacts/ burrito.zip
+          cd release && tar -czvf ${{ github.ref_name }}-win64.tar.gz -C ../build_artifacts/ burrito-win64.zip
+          cd release && tar -czvf ${{ github.ref_name }}-win32.tar.gz -C ../build_artifacts/ burrito-win32.zip
+          cd release && tar -czvf ${{ github.ref_name }}-mac64.tar.gz -C ../build_artifacts/ burrito-mac64.zip
 
       - name: Upload Prerelease
         if: startsWith(github.ref, 'refs/tags/v')
@@ -83,4 +102,7 @@ jobs:
           draft: true
           prerelease: true
           files: |
-            release/${{ github.ref_name }}-${{ runner.os }}-${{ runner.arch }}.tar.gz
+            release/${{ github.ref_name }}.tar.gz
+            release/${{ github.ref_name }}-win64.tar.gz
+            release/${{ github.ref_name }}-win32.tar.gz
+            release/${{ github.ref_name }}-mac64.tar.gz
