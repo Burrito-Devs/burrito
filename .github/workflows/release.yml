@@ -42,10 +42,10 @@ jobs:
           mkdir -pv release
           cd release
           tag=${{ steps.current_release.outputs.tag_name }}
-          cp ../build_artifacts/burrito-${tag}-linux.zip ./burrito-linux-${{ github.ref_name }}.zip
-          cp ../build_artifacts/burrito-${tag}-win64.zip ./burrito-win64-${{ github.ref_name }}.zip
-          cp ../build_artifacts/burrito-${tag}-win32.zip ./burrito-win32-${{ github.ref_name }}.zip
-          cp ../build_artifacts/burrito-${tag}-mac64.zip ./burrito-mac64-${{ github.ref_name }}.zip
+          cp /var/tmp/burrito-${tag}-linux.zip ./burrito-linux-${{ github.ref_name }}.zip
+          cp /var/tmp/burrito-${tag}-win64.zip ./burrito-win64-${{ github.ref_name }}.zip
+          cp /var/tmp/burrito-${tag}-win32.zip ./burrito-win32-${{ github.ref_name }}.zip
+          cp /var/tmp/burrito-${tag}-mac64.zip ./burrito-mac64-${{ github.ref_name }}.zip
 
       - name: Upload Release
         if: startsWith(github.ref, 'refs/tags/v')
