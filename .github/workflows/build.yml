@@ -49,7 +49,7 @@ jobs:
       - name: Copy binaries to cache folder
         run: |
           mkdir -pv build_artifacts
-          cp target/x64_64-apple-darwin/release/burrito.zip build_artifacts/burrito-mac64.zip
+          cp target/x86_64-apple-darwin/release/burrito.zip build_artifacts/burrito-mac64.zip
 
       - name: Create Artifact
         run: |
@@ -111,8 +111,8 @@ jobs:
       - name: Copy binaries to cache folder
         run: |
           mkdir -pv build_artifacts
-          cp target/x64_64-unknown-linux-gnu/release/burrito.zip build_artifacts
-          cp target/x64_64-pc-windows-gnu/release/burrito.zip build_artifacts/burrito-win64.zip
+          cp target/x86_64-unknown-linux-gnu/release/burrito.zip build_artifacts
+          cp target/x86_64-pc-windows-gnu/release/burrito.zip build_artifacts/burrito-win64.zip
           cp target/i686-pc-windows-gnu/release/burrito.zip build_artifacts/burrito-win32.zip
 
       - name: Create Artifact
