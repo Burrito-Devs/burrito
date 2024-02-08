@@ -41,6 +41,7 @@ jobs:
         run: |
           mkdir -pv release
           cd release
+          la -la /var/tmp
           tag=${{ steps.current_release.outputs.tag_name }}
           cp /var/tmp/burrito-${tag}-linux.zip ./burrito-linux-${{ github.ref_name }}.zip
           cp /var/tmp/burrito-${tag}-win64.zip ./burrito-win64-${{ github.ref_name }}.zip
