@@ -54,7 +54,7 @@ jobs:
       - name: Create Artifact
         run: |
           mkdir -pv artifact
-          cd artifact && mv ../build_artifacts/burrito-mac64.zip ./burrito-mac64-${{ github.sha }}.zip
+          cd artifact && cp ../build_artifacts/burrito-mac64.zip ./burrito-mac64-${{ github.sha }}.zip
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
@@ -66,7 +66,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           mkdir -pv release
-          cd release && mv ../build_artifacts/burrito-mac64.zip ./burrito-mac64-${{ github.ref_name }}.zip
+          cd release && cp ../build_artifacts/burrito-mac64.zip ./burrito-mac64-${{ github.ref_name }}.zip
 
       - name: Upload Prerelease
         if: startsWith(github.ref, 'refs/tags/v')
@@ -119,9 +119,9 @@ jobs:
         run: |
           mkdir -pv artifact
           cd artifact
-          mv ../build_artifacts/burrito.zip ./burrito-linux-${{ github.sha }}.zip
-          mv ../build_artifacts/burrito-win64.zip ./burrito-win64-${{ github.sha }}.zip
-          mv ../build_artifacts/burrito-win32.zip ./burrito-win32-${{ github.sha }}.zip
+          cp ../build_artifacts/burrito.zip ./burrito-linux-${{ github.sha }}.zip
+          cp ../build_artifacts/burrito-win64.zip ./burrito-win64-${{ github.sha }}.zip
+          cp ../build_artifacts/burrito-win32.zip ./burrito-win32-${{ github.sha }}.zip
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
@@ -146,9 +146,9 @@ jobs:
         run: |
           mkdir -pv release
           cd release
-          mv ../build_artifacts/burrito.zip ./burrito-linux-${{ github.ref_name }}.zip
-          mv ../build_artifacts/burrito-win64.zip ./burrito-win64-${{ github.ref_name }}.zip
-          mv ../build_artifacts/burrito-win32.zip ./burrito-win32-${{ github.ref_name }}.zip
+          cp ../build_artifacts/burrito.zip ./burrito-linux-${{ github.ref_name }}.zip
+          cp ../build_artifacts/burrito-win64.zip ./burrito-win64-${{ github.ref_name }}.zip
+          cp ../build_artifacts/burrito-win32.zip ./burrito-win32-${{ github.ref_name }}.zip
 
       - name: Upload Prerelease
         if: startsWith(github.ref, 'refs/tags/v')
