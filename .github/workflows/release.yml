@@ -30,21 +30,11 @@ jobs:
         with:
           tag: ${{ steps.current_release.outputs.tag_name }}
           files: |
-            ${{ steps.current_release.outputs.tag_name }}-macOS-X64.tar.gz
-            ${{ steps.current_release.outputs.tag_name }}-Linux-X64.tar.gz
-            ${{ steps.current_release.outputs.tag_name }}-Windows-X64.tar.gz
+            burrito-linux-${{ steps.current_release.outputs.tag_name }}.zip
+            burrito-win64-${{ steps.current_release.outputs.tag_name }}.zip
+            burrito-win32-${{ steps.current_release.outputs.tag_name }}.zip
+            burrito-mac64-${{ steps.current_release.outputs.tag_name }}.zip
           target: /var/tmp/
-
-      - name: Extract Release
-        run: |
-          rm -rfv build_artifacts
-          tag=${{ steps.current_release.outputs.tag_name }}
-          mkdir -pv build_artifacts/burrito-${tag}-macOS-X64
-          tar xzvf /var/tmp/${tag}-macOS-X64.tar.gz -C build_artifacts/burrito-${tag}-macOS-X64
-          mkdir -pv build_artifacts/burrito-${tag}-Linux-X64
-          tar xzvf /var/tmp/${tag}-Linux-X64.tar.gz -C build_artifacts/burrito-${tag}-Linux-X64
-          mkdir -pv build_artifacts/burrito-${tag}-Windows-X64
-          tar xzvf /var/tmp/${tag}-Windows-X64.tar.gz -C build_artifacts/burrito-${tag}-Windows-X64
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/v')
@@ -52,9 +42,10 @@ jobs:
           mkdir -pv release
           cd release
           tag=${{ steps.current_release.outputs.tag_name }}
-          tar -czvf burrito-${{ github.ref_name }}-macOS-X64.tar.gz -C ../build_artifacts/ burrito-${tag}-macOS-X64/
-          tar -czvf burrito-${{ github.ref_name }}-Linux-X64.tar.gz -C ../build_artifacts/ burrito-${tag}-Linux-X64/
-          tar -czvf burrito-${{ github.ref_name }}-Windows-X64.tar.gz -C ../build_artifacts/ burrito-${tag}-Windows-X64/
+          cp ../build_artifacts/burrito-${tag}-linux.zip ./burrito-linux-${{ github.ref_name }}.zip
+          cp ../build_artifacts/burrito-${tag}-win64.zip ./burrito-win64-${{ github.ref_name }}.zip
+          cp ../build_artifacts/burrito-${tag}-win32.zip ./burrito-win32-${{ github.ref_name }}.zip
+          cp ../build_artifacts/burrito-${tag}-mac64.zip ./burrito-mac64-${{ github.ref_name }}.zip
 
       - name: Upload Release
         if: startsWith(github.ref, 'refs/tags/v')
