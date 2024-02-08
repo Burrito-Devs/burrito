@@ -118,9 +118,10 @@ jobs:
       - name: Create Artifact
         run: |
           mkdir -pv artifact
-          cd artifact && tar -czvf ${{ github.sha }}.tar.gz -C ../build_artifacts/ burrito.zip
-          cd artifact && tar -czvf ${{ github.sha }}-win64.tar.gz -C ../build_artifacts/ burrito-win64.zip
-          cd artifact && tar -czvf ${{ github.sha }}-win32.tar.gz -C ../build_artifacts/ burrito-win32.zip
+          cd artifact
+          tar -czvf ${{ github.sha }}.tar.gz -C ../build_artifacts/ burrito.zip
+          tar -czvf ${{ github.sha }}-win64.tar.gz -C ../build_artifacts/ burrito-win64.zip
+          tar -czvf ${{ github.sha }}-win32.tar.gz -C ../build_artifacts/ burrito-win32.zip
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
@@ -144,9 +145,10 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           mkdir -pv release
-          cd release && tar -czvf ${{ github.ref_name }}.tar.gz -C ../build_artifacts/ burrito.zip
-          cd release && tar -czvf ${{ github.ref_name }}-win64.tar.gz -C ../build_artifacts/ burrito-win64.zip
-          cd release && tar -czvf ${{ github.ref_name }}-win32.tar.gz -C ../build_artifacts/ burrito-win32.zip
+          cd release
+          tar -czvf ${{ github.ref_name }}.tar.gz -C ../build_artifacts/ burrito.zip
+          tar -czvf ${{ github.ref_name }}-win64.tar.gz -C ../build_artifacts/ burrito-win64.zip
+          tar -czvf ${{ github.ref_name }}-win32.tar.gz -C ../build_artifacts/ burrito-win32.zip
 
       - name: Upload Prerelease
         if: startsWith(github.ref, 'refs/tags/v')
