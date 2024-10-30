@@ -104,7 +104,7 @@ pub struct TextChannelConfig {
 impl Default for TextChannelConfig {
     fn default() -> Self {
         let mut channels = HashSet::new();
-        channels.insert(IntelChannel::Condisov);
+        channels.insert(IntelChannel::East);
         TextChannelConfig { text_channels: channels }
     }
 }
