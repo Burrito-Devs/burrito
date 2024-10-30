@@ -78,7 +78,7 @@ This alert will play the sound file `/home/the_bernie/.burrito/sounds/neut_in_ra
 
 ### Modifying Intel Channels
 
-By default, Burrito will only listen to the channels `delve.imperium` and `querious.imperium`. These are the two most active and relevant Imperium intel channels. Burrito has built-in support for all current and past Imperium intel channels. An exhaustive list of these can be found [here](./src/burrito/log_watcher.rs#L439). Burrito also supports custom channels. If you are using different intel channels, you can specify them like this:
+By default, Burrito will only listen to the channel `east.imperium`. This is currently the main intel channel for Imperium space. Burrito also has built-in support for all current and past Imperium intel channels. An exhaustive list of these can be found [here](./src/burrito/log_watcher.rs#L439). Burrito also supports custom channels. If you are using different intel channels, you can specify them like this:
 
 ```JSON
 {
